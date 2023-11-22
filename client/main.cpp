@@ -11,8 +11,10 @@
 struct Options
 {
     std::optional<bool> gui = false; // Whether to show a simple GUI showing the game (NOT USED RIGHT NOW)
+    std::optional<float> mapHeight = 10;
+    std::optional<float> mapWidth = 10;
 };
-STRUCTOPT(Options, gui); // https://github.com/p-ranav/structopt
+STRUCTOPT(Options, gui, mapHeight, mapWidth); // https://github.com/p-ranav/structopt
 
 int main(int argc, char *argv[])
 {
@@ -48,8 +50,8 @@ int main(int argc, char *argv[])
     // Init local gamestate
     Game game = Game(
             0,
-            10,
-            10,
+            options.mapHeight.value(),
+            options.mapWidth.value(),
             libReceivedUpdatesQueue,
             libSendQueue);
     // TODO: This should be sent by the server, for now, spawn player top left

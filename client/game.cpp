@@ -6,7 +6,7 @@
 // startGameLoop starts the client game loop, this is a blocking call, so should not be performed on the main thread
 using namespace std::chrono;
 void Game::startGameLoop() {
-    using Framerate = duration<steady_clock::rep, std::ratio<1, 2>>; // 20 ticks per second
+    using Framerate = duration<steady_clock::rep, std::ratio<1, 20>>; // 20 ticks per second
     auto next = steady_clock::now() + Framerate{1};
 
     while (true) {
@@ -28,16 +28,16 @@ int Game::tick() {
     std::vector<std::pair<EventType, Position>> possibleActions;
 
     Position playerPos = gamestate.player.pos;
-    if (playerPos.y > 0.1) {
+    if (playerPos.y >= 0.1) {
         possibleActions.emplace_back(PLAYER_MOVE_UP, Position(playerPos.x, playerPos.y - 0.1f));
     }
-    if (playerPos.y < gameHeight-0.1) {
+    if (playerPos.y <= mapHeight-0.1) {
         possibleActions.emplace_back(PLAYER_MOVE_DOWN, Position(playerPos.x, playerPos.y + 0.1f));
     }
-    if (playerPos.x > 0.1) {
+    if (playerPos.x >= 0.1) {
         possibleActions.emplace_back(PLAYER_MOVE_LEFT, Position(playerPos.x - 0.1f, playerPos.y));
     }
-    if (playerPos.x < gameWidth-0.1) {
+    if (playerPos.x <= mapWidth-0.1) {
         possibleActions.emplace_back(PLAYER_MOVE_RIGHT, Position(playerPos.x + 0.1f, playerPos.y));
     }
 

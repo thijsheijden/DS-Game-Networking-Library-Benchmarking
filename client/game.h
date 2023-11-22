@@ -52,18 +52,18 @@ class Game
 {
 public:
     explicit Game(
-            int numPlayersArg,
-            float gameHeightArg,
-            float gameWidthArg,
+            int _numPlayers,
+            float _mapHeight,
+            float _mapWidth,
             queueType *networkLibReceivedQueueArg,
             queueType *networkLibSendQueueArg) :
-            gamestate(numPlayersArg),
+            gamestate(_numPlayers),
             networkLibReceivedQueue(networkLibReceivedQueueArg),
             networkLibSendQueue(networkLibSendQueueArg)
     {
-        numPlayers = numPlayersArg;
-        gameHeight = gameHeightArg;
-        gameWidth = gameWidthArg;
+        numPlayers = _numPlayers;
+        mapHeight = _mapHeight;
+        mapWidth = _mapWidth;
     };
 
     void setInitialPlayerPos(Position pos)
@@ -77,8 +77,8 @@ public:
 private:
     int numPlayers;
     Gamestate gamestate;
-    float gameHeight;
-    float gameWidth;
+    float mapHeight;
+    float mapWidth;
     char errBuff[GAME_ERR_BUFF_SIZE]{};
 
     // The queue containing updates received from the networking library, to be processed in the next tick

@@ -1,22 +1,22 @@
-#include <cstdio>
 #include <cstdlib>
 #include <libc.h>
-#include <system_error>
 #include <structopt/app.hpp>
 #include "common.h"
 #include "game.h"
-#include "time.h"
+#include "network_libraries/networking_library.h"
+#include "network_libraries/raknet/raknet.h"
+#include "thread"
 
 // Options contains the given configuration options
 struct Options
 {
-    std::optional<bool> gui = false;
+    std::optional<bool> gui = false; // Whether to show a simple GUI showing the game (NOT USED RIGHT NOW)
 };
 STRUCTOPT(Options, gui); // https://github.com/p-ranav/structopt
 
 int main(int argc, char *argv[])
 {
-    // Seed random generator
+    // Seed random generator (I know that this random generator is not the best)
     srand(time(NULL));
 
     // Parse given arguments into Options instance
@@ -31,21 +31,36 @@ int main(int argc, char *argv[])
         std::cout << e.help();
     }
 
-//    std::queue<std::pair<uint32_t, uint32_t>> test;
+    // Init the communication queues between networking lib and local game
+    auto *libReceivedUpdatesQueue = new queueType();
+    auto *libSendQueue = new queueType();
 
     // Init networking library
+    NetworkingLibrary *networkLib = new NetworkingLibraryRaknet(libReceivedUpdatesQueue, libSendQueue);
 
-    // Receive game information from server (number of players, our player ID)
+    // Start receiving updates via network library
+    std::thread networkLibThread(&NetworkingLibrary::startReceivingUpdates, networkLib);
 
-    // Receive our player spawn position + IDs and spawn positions of all other players
+    // TODO: Receive game information from server (number of players, our player ID)
+
+    // TODO: Receive our player spawn position + IDs and spawn positions of all other players
 
     // Init local gamestate
-    Game game = Game(0, 10, 10);
+    Game game = Game(
+            0,
+            10,
+            10,
+            libReceivedUpdatesQueue,
+            libSendQueue);
     // TODO: This should be sent by the server, for now, spawn player top left
     game.setInitialPlayerPos(Position(1, 1));
 
     // Start game loop
-    game.startGameLoop();
+    std::thread gameLoopThread(&Game::startGameLoop, &game);
+
+    // Wait for threads to finish (they never will)
+    gameLoopThread.join();
+    networkLibThread.join();
 
     return EXIT_SUCCESS;
 }

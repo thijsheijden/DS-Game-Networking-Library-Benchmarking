@@ -4,17 +4,15 @@
 struct Position
 {
 public:
-    // Constructors
+    float x;
+    float y;
+
     Position()=default;
     Position(float initialX, float initialY)
     {
         x = initialX;
         y = initialY;
     }
-
-    // Fields
-    float x;
-    float y;
 };
 
 #endif //CLIENT_COMMON_H

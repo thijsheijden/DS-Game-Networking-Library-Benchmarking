@@ -6,6 +6,7 @@
 #include "common.h"
 #include "vector"
 #include "game_events.h"
+#include "network_libraries/networking_library.h"
 
 #ifndef CLIENT_GAME_H
 #define CLIENT_GAME_H
@@ -14,20 +15,16 @@
 
 struct Bomb
 {
-    // Constructor
-    Bomb()= default;
-
-    // Fields
     Position pos;
+
+    Bomb()= default;
 };
 
 struct Player
 {
-    // Constructor
-    Player()= default;
-
-    // Fields
     Position pos;
+
+    Player()= default;
 };
 
 // Gamestate keeps track of the total gamestate. The state is updated both by local updates and updates received from
@@ -35,21 +32,17 @@ struct Player
 struct Gamestate
 {
 public:
-    // Constructor
-    explicit Gamestate(int numPlayers)
+    Player player;
+
+    explicit Gamestate(int numPlayers) : player()
     {
         otherPlayers = std::vector<Player>(numPlayers);
         bombs = std::vector<Bomb>(numPlayers*3);
     };
 
-    // Fields
-    Player player{};
-
-    // Methods
     void moveLocalPlayer(Position newPos);
 
 private:
-    // Fields
     std::vector<Player> otherPlayers;
     std::vector<Bomb> bombs;
 };
@@ -58,15 +51,21 @@ private:
 class Game
 {
 public:
-    // Constructor
-    explicit Game(int numPlayersArg, float gameHeightArg, float gameWidthArg) : gamestate(numPlayersArg)
+    explicit Game(
+            int numPlayersArg,
+            float gameHeightArg,
+            float gameWidthArg,
+            queueType *networkLibReceivedQueueArg,
+            queueType *networkLibSendQueueArg) :
+            gamestate(numPlayersArg),
+            networkLibReceivedQueue(networkLibReceivedQueueArg),
+            networkLibSendQueue(networkLibSendQueueArg)
     {
         numPlayers = numPlayersArg;
         gameHeight = gameHeightArg;
         gameWidth = gameWidthArg;
     };
 
-    // Methods
     void setInitialPlayerPos(Position pos)
     {
         gamestate.player.pos = pos;
@@ -76,14 +75,18 @@ public:
     void startGameLoop();
 
 private:
-    // Fields
     int numPlayers;
     Gamestate gamestate;
     float gameHeight;
     float gameWidth;
     char errBuff[GAME_ERR_BUFF_SIZE]{};
 
-    // Methods
+    // The queue containing updates received from the networking library, to be processed in the next tick
+    queueType *networkLibReceivedQueue;
+
+    // The queue containing local updates to be sent by the networking library
+    queueType *networkLibSendQueue;
+
     int tick();
 };
 

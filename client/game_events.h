@@ -14,10 +14,13 @@ enum EventType
     BOMB_EXPLODED,
 };
 
+// PlayerMoveEvent denotes the player moving to a new position
 struct PlayerMoveEvent
 {
     uint32_t playerID; // ID of the player that moved
     Position newPos; // The new position of this player
+
+    PlayerMoveEvent(uint32_t playerIDArg, Position newPosArg) : newPos(newPosArg), playerID(playerIDArg) {}
 };
 
 #endif //CLIENT_GAME_EVENTS_H

@@ -6,7 +6,7 @@
 // startGameLoop starts the client game loop, this is a blocking call, so should not be performed on the main thread
 using namespace std::chrono;
 void Game::startGameLoop() {
-    using Framerate = duration<steady_clock::rep, std::ratio<1, 20>>; // 20 ticks per second
+    using Framerate = duration<steady_clock::rep, std::ratio<1, 2>>; // 20 ticks per second
     auto next = steady_clock::now() + Framerate{1};
 
     while (true) {
@@ -48,6 +48,15 @@ int Game::tick() {
     gamestate.moveLocalPlayer(chosenAction.second);
 
     // TODO: Pass performed action to networking library
+    networkLibSendQueue->emplace(chosenAction.first, PlayerMoveEvent(1, chosenAction.second));
+
+    // Go through received updates from networking lib and process updates
+    while (!(networkLibReceivedQueue->empty())){
+        auto receivedUpdate = networkLibReceivedQueue->front();
+
+        // TODO: Process update
+        printf("received game update from network library of type: %u\n", receivedUpdate.first);
+    }
 
     return 0;
 }

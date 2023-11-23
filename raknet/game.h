@@ -20,13 +20,6 @@ struct Bomb
     Bomb()= default;
 };
 
-struct Player
-{
-    Position pos;
-
-    Player()= default;
-};
-
 // Gamestate keeps track of the total gamestate. The state is updated both by local updates and updates received from
 // the networking library
 struct Gamestate

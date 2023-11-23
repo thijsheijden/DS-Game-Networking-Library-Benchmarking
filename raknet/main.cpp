@@ -1,11 +1,8 @@
 #include <cstdlib>
 #include <libc.h>
 #include <structopt/app.hpp>
-#include "common.h"
-#include "game.h"
-#include "network_libraries/networking_library.h"
-#include "network_libraries/raknet/raknet.h"
-#include "thread"
+#include "client.h"
+#include "player.h"
 
 // Options contains the given configuration options
 struct Options
@@ -33,39 +30,23 @@ int main(int argc, char *argv[])
         std::cout << e.help();
     }
 
-    // Init the communication queues between networking lib and local game
-    auto *libReceivedUpdatesQueue = new queueType();
-    auto *libSendQueue = new queueType();
+    // Create new game client
+    auto *c = new Client;
 
-    // Init networking library
-    NetworkingLibrary *networkLib = new NetworkingLibraryRaknet(libReceivedUpdatesQueue, libSendQueue);
+    // Create a new player
+    auto *p = new Player;
+    p->SetNetworkIDManager(&c->manager);
+    NetworkID playerNetworkID = p->GetNetworkID();
+    printf("player network ID is: %llu\n", playerNetworkID);
 
-    // Start receiving updates via network library
-    std::thread networkLibThread(&NetworkingLibrary::startReceivingUpdates, networkLib);
-
-    // TODO: Receive game information from server (number of players, our player ID)
-
-    // TODO: Receive our player spawn position + IDs and spawn positions of all other players
-
-    // Init local gamestate
-    Game game = Game(
-            0,
-            options.mapHeight.value(),
-            options.mapWidth.value(),
-            libReceivedUpdatesQueue,
-            libSendQueue);
-    // TODO: This should be sent by the server, for now, spawn player top left
-    game.setInitialPlayerPos(Position(1, 1));
-
-    // Start game loop
-    std::thread gameLoopThread(&Game::startGameLoop, &game);
-
-    // Wait for threads to finish (they never will)
-    gameLoopThread.join();
-    networkLibThread.join();
+    auto *p2 = new Player;
+    p2->SetNetworkIDManager(&c->manager);
+    NetworkID p2NetworkID = p2->GetNetworkID();
+    printf("player_2 network ID is: %llu\n", p2NetworkID);
 
     return EXIT_SUCCESS;
 }
+
 
 /*
   Implementation requirements

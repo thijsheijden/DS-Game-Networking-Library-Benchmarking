@@ -3,10 +3,11 @@
 
 #include <cstdint>
 #include "common.h"
+#include "slikenet/MessageIdentifiers.h"
 
 enum EventType
 {
-    PLAYER_MOVE_UP,
+    PLAYER_MOVE_UP = ID_USER_PACKET_ENUM, // Set the ID of our first message identifier to the last native RakNet identifier
     PLAYER_MOVE_DOWN,
     PLAYER_MOVE_LEFT,
     PLAYER_MOVE_RIGHT,

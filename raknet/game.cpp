@@ -2,8 +2,9 @@
 #include "chrono"
 #include "thread"
 #include "game_events.h"
+#include "slikenet/MessageIdentifiers.h"
 
-// startGameLoop starts the client game loop, this is a blocking call, so should not be performed on the main thread
+// startGameLoop starts the game loop, this is a blocking call, so should not be performed on the main thread
 using namespace std::chrono;
 void Game::startGameLoop() {
     using Framerate = duration<steady_clock::rep, std::ratio<1, 20>>; // 20 ticks per second

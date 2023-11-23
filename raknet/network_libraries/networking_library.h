@@ -10,7 +10,7 @@ typedef std::queue<std::pair<EventType, std::variant<PlayerMoveEvent>>> queueTyp
 class NetworkingLibrary
 {
 public:
-    // The queue that the library passes its received updates to, for the local client to process
+    // The queue that the library passes its received updates to, for the local raknet_client to process
     queueType *receivedUpdateQueue;
 
     // The queue that the local game passes its updates to, for the library to transmit

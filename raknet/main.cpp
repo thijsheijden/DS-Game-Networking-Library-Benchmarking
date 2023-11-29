@@ -1,17 +1,8 @@
 #include <cstdlib>
 #include <libc.h>
 #include <structopt/app.hpp>
-#include "client.h"
+#include "client/client.h"
 #include "player.h"
-
-// Options contains the given configuration options
-struct Options
-{
-    std::optional<bool> gui = false; // Whether to show a simple GUI showing the game (NOT USED RIGHT NOW)
-    std::optional<float> mapHeight = 10;
-    std::optional<float> mapWidth = 10;
-};
-STRUCTOPT(Options, gui, mapHeight, mapWidth); // https://github.com/p-ranav/structopt
 
 int main(int argc, char *argv[])
 {

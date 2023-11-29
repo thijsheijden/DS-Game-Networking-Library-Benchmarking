@@ -1,5 +1,5 @@
 #include <cstdint>
-#include "common.h"
+#include "common/common.h"
 #include "slikenet/NetworkIDObject.h"
 
 #ifndef CLIENT_PLAYER_H

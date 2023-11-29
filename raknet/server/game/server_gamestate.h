@@ -11,8 +11,10 @@ using namespace std;
 
 class ServerGamestate: public Gamestate {
 public:
+    vector<pair<NetworkID, Position>> updatedPlayerPositions;
     map<SystemAddress, Player*> connectedPlayers;
 
     void CreateAndSpawnNewPlayerForClient(SystemAddress clientAddress);
     void RemovePlayer(SystemAddress clientAddress);
+    void UpdatePlayerPositions();
 };

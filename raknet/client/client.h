@@ -9,16 +9,19 @@ using namespace SLNet;
 class Client
 {
 public:
-    NetworkIDManager manager;
     RakPeerInterface *rakPeer;
     ClientGamestate gamestate;
 
     Client() = default;
-    void WaitForConnectionAndApplyGameConfiguration() const;
+    void WaitForConnectionAndApplyGameConfiguration();
     void WaitForPlayerSpawn();
-    void StartGameloop();
+    void StartGameloop(bool display);
 
 private:
+    SystemAddress serverAddress;
+
     void handleLibraryPacket(Packet *p, u_char identifier);
     void handleCustomPacket(Packet *p, u_char identifier);
+    void sendLocalPlayerMove(Position newPos);
+    void handlePlayerPositionUpdate(NetworkID playerID, Position newPos);
 };

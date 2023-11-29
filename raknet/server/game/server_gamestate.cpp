@@ -26,7 +26,7 @@ void ServerGamestate::CreateAndSpawnNewPlayerForClient(SystemAddress clientAddre
     auto *player = new Player;
     player->pos = randomPos;
     player->SetNetworkIDManager(&networkIDManager);
-    connectedPlayers[clientAddress] = player;
+    connectedPlayers.emplace(clientAddress, player);
 }
 
 void ServerGamestate::RemovePlayer(SystemAddress clientAddress) {
@@ -34,4 +34,23 @@ void ServerGamestate::RemovePlayer(SystemAddress clientAddress) {
         delete connectedPlayers[clientAddress];
         connectedPlayers.erase(clientAddress);
     }
+}
+
+// UpdatePlayerPositions updates the remote player positions. It goes through the list of updated positions the players
+// have sent, checks whether the move is valid (not more than 1 space), updates the player positions in the gamestate, and
+// then wipes the position updates queue
+void ServerGamestate::UpdatePlayerPositions() {
+    for (auto updatedPlayerPos: updatedPlayerPositions) {
+        // Fetch this players current position
+        auto currentPlayer = networkIDManager.GET_OBJECT_FROM_ID<Player*>(updatedPlayerPos.first);
+
+        // Player moved more than 1 space in one tick, decline position update
+        if (abs(updatedPlayerPos.second.y - currentPlayer->pos.y) > 1 || abs(updatedPlayerPos.second.x - currentPlayer->pos.x) > 1) continue;
+
+        // Update player position
+        currentPlayer->pos = updatedPlayerPos.second;
+    }
+
+    // Clear position updates queue
+    updatedPlayerPositions.clear();
 }

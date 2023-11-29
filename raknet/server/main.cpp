@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
     // Create RakNet peer
     server.rakPeer = RakPeerInterface::GetInstance();
-    auto startupStatus = server.rakPeer->Startup(2, new SocketDescriptor(GAME_PORT, 0), 1);
+    auto startupStatus = server.rakPeer->Startup(givenConfig.playerCount.value(), new SocketDescriptor(GAME_PORT, 0), 1);
     server.rakPeer->SetMaximumIncomingConnections(givenConfig.playerCount.value());
     if (startupStatus != RAKNET_STARTED) {
         cout << "failed to start RakNet";

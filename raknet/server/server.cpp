@@ -9,11 +9,8 @@ using namespace chrono;
 // StartGameLoop starts the server game loop, this is a blocking call, so should either be the last thing called in main
 // or be started in a thread
 void Server::StartGameLoop() {
-    using Framerate = duration<steady_clock::rep, ratio<1, 20>>; // 20 ticks per second
+    using Framerate = duration<steady_clock::rep, ratio<1, 5>>; // 20 ticks per second
     auto next = steady_clock::now() + Framerate{1};
-
-    // Updates to be performed at every tick
-    vector<pair<EventType, variant<PlayerMoveEvent>>> updateQueue;
 
     // Packet pointer
     Packet* receivedPacket;
@@ -39,8 +36,14 @@ void Server::StartGameLoop() {
             }
         }
 
-        // Perform queued updates
-        printf("tick\n");
+        // Perform queued position updates
+        gamestate.UpdatePlayerPositions();
+
+        // Broadcast updated player positions
+        for (auto player: gamestate.connectedPlayers) {
+            auto *playerPositionMessage = new PlayerPositionMessage(player.second->GetNetworkID(), player.second->pos);
+            rakPeer->Send(reinterpret_cast<char*>(playerPositionMessage), sizeof(PlayerPositionMessage), HIGH_PRIORITY, RELIABLE, 0, UNASSIGNED_SYSTEM_ADDRESS, true);
+        }
 
         // Set next time tick should occur
         next += Framerate{1};
@@ -64,7 +67,12 @@ void Server::handleLibraryPacket(Packet *p, u_char identifier) {
 }
 
 void Server::handleCustomPacket(Packet *p, u_char identifier) {
-
+    switch (identifier) {
+        case PLAYER_MOVE:
+            auto *playerMoveMessage = reinterpret_cast<PlayerMoveMessage*>(p->data);
+            gamestate.updatedPlayerPositions.emplace_back(playerMoveMessage->playerID, playerMoveMessage->newPos);
+            break;
+    }
 }
 
 // sendGameConfigToClient sends the game config (map size, player count etc) to a newly connected client

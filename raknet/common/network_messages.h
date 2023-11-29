@@ -9,23 +9,34 @@ enum EventType
     PLAYER_SPAWN,
     PLAYER_JOIN,
     PLAYER_LEAVE,
-    PLAYER_MOVE_UP,
-    PLAYER_MOVE_DOWN,
-    PLAYER_MOVE_LEFT,
-    PLAYER_MOVE_RIGHT,
+    PLAYER_MOVE,
+    PLAYER_POSITION,
     BOMB_PLACED,
     BOMB_EXPLODED,
 };
 
-// PlayerMoveEvent denotes the player moving to a new position
+// PlayerMoveMessage denotes the player moving to a new position
 #pragma pack(push, 1)
 #pragma pack(pop)
-struct PlayerMoveEvent
-{
+struct PlayerMoveMessage {
+    EventType messageType = PLAYER_MOVE;
     NetworkID playerID; // ID of the player that moved
     Position newPos; // The new position of this player
 
-    PlayerMoveEvent(NetworkID _playerID, Position _newPos) : newPos(_newPos), playerID(_playerID) {}
+    PlayerMoveMessage(NetworkID _playerID, Position _newPos) : newPos(_newPos), playerID(_playerID) {}
+};
+
+#pragma pack(push, 1)
+#pragma pack(pop)
+struct PlayerPositionMessage {
+    EventType messageType = PLAYER_POSITION;
+    NetworkID playerID; // ID of the player whose position is being sent
+    Position currentPos; // The current position of this player (this can be different than the local client expects)
+
+    PlayerPositionMessage(NetworkID _playerID, Position _currentPos) {
+        playerID = _playerID;
+        currentPos = _currentPos;
+    }
 };
 
 // GameConfig is the message that is sent when a client connects, containing the config for the current game

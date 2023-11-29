@@ -28,5 +28,5 @@ add_executable(server server/main.cpp
         common/gamestate.h
 )
 
-target_link_libraries(client -lslikenet)
+target_link_libraries(client -lslikenet -lncurses)
 target_link_libraries(server -lslikenet)

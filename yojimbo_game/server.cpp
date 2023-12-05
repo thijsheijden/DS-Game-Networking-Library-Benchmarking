@@ -109,6 +109,9 @@ void removePlayer(clientID playerIndex, ServerGameState& gameState) {
 void ServerGameState::UpdatePlayerPositions() {
     for (std::pair<clientID, Position> updatedPlayerPos: updatedPlayerPositions) {
         // Fetch this players current position
+        if(connectedPlayers.count(updatedPlayerPos.first) == 0)
+            continue;
+
         Player* currentPlayer = connectedPlayers[updatedPlayerPos.first];
 
         // Player moved more than 1 space in one tick, decline position update
@@ -116,6 +119,7 @@ void ServerGameState::UpdatePlayerPositions() {
 
         // Update player position
         currentPlayer->pos = updatedPlayerPos.second;
+        printf("player %d moved, x: %d, y: %d\n", updatedPlayerPos.first, currentPlayer->pos.x, currentPlayer->pos.y);
     }
 
     // Clear position updates queue
@@ -133,6 +137,20 @@ void sendGameConfigToClient(clientID clientIndex, Server& server, ServerGameStat
     server.SendMessage(clientIndex, (int)GameChannel::RELIABLE, config_message);
 }
 
+void broadcastUpdatedPlayerPosition(clientID updatedPlayerId, Server& server, ServerGameState& gameState) {
+    printf("sending updated client position");
+
+    for (clientID i = 0; i < MAX_CLIENTS; i++) {
+        if (server.IsClientConnected(i)) {
+            PlayerPositionMessage* position_message = (PlayerPositionMessage*)server.CreateMessage(i, (int)TestMessageType::PLAYER_POSITION_MESSAGE);
+            position_message->x = gameState.connectedPlayers[updatedPlayerId]->pos.x;
+            position_message->y = gameState.connectedPlayers[updatedPlayerId]->pos.y;
+            position_message->playerID = updatedPlayerId;
+            server.SendMessage(i, (int)GameChannel::RELIABLE, position_message);
+        }
+    }
+}
+
 static volatile int quit = 0;
 
 
@@ -141,46 +159,17 @@ void interrupt_handler( int /*dummy*/ )
     quit = 1;
 }
 
-
-
-void update_message_to_send(TestMessage* message) {
-    // HERE input information you want to send to the server
-    // You can check which fields are in the message in the shared.h
-    // class TestMessage 
-    message->m_data = 42;
-    message->direction = 3;
-    message->is_alive = true;
+void ProcessPlayerMoveMessage(clientID clientIndex, PlayerMoveMessage* message, ServerGameState& gameState, Server& server) {
+    printf("player %d moved received, x: %d, y: %d\n", clientIndex, message->x, message->y);
+    gameState.updatedPlayerPositions.push_back({message->playerID, Position(message->x, message->y)});
 }
-
-void ProcessTestMessage(clientID clientIndex, TestMessage* message, ServerGameState& gameState, Server& server) {
-    // Read client message
-
-    // // Update game state
-    gameState.UpdatePlayerPositions();
-
-    // Send a reply to client
-    TestMessage* reply_message = (TestMessage*)server.CreateMessage(clientIndex, (int)TestMessageType::TEST_MESSAGE);
-    // All fields must be initialized
-    reply_message->m_data = 4;
-    reply_message->direction = 4;
-    reply_message->is_alive = 0;
-    // This line does not send anything yet, all the messages are sent in the server.SendPackets(); line.
-    server.SendMessage(clientIndex, (int)GameChannel::RELIABLE, reply_message);
-}
-
-// void ProcessPlayerMoveMessage(clientID clientIndex, yojimbo::Message* message, ServerGameState& gameState, Server& server) {
-//     gameState.updatedPlayerPositions.emplace
-// }
 
 void ProcessMessage(clientID clientIndex, yojimbo::Message* message, ServerGameState& gameState, Server& server) {
     printf(" processing! ");
     switch (message->GetType()) {
-    case (int)TestMessageType::TEST_MESSAGE:
-        ProcessTestMessage(clientIndex, (TestMessage*)message, gameState, server);
-        break;
-    // case (int)TestMessageType::PLAYER_MOVE_MESSAGE:
-    //     ProcessPlayerMoveMessage(clientIndex, (PlayerMoveMessage*)message, gameState, server);
-    //     break;    
+    case (int)TestMessageType::PLAYER_MOVE_MESSAGE:
+        ProcessPlayerMoveMessage(clientIndex, (PlayerMoveMessage*)message, gameState, server);
+        break;    
     default:
         break;
     }
@@ -216,17 +205,9 @@ int ServerMain()
     gameState.mapHeight = 20;
     gameState.mapWidth  = 20;
 
-    coord xs = 0;
-    coord ys = 1;
-    
-
     while ( !quit )
     {
         server.SendPackets();
-
-        Position pos = Position(xs, ys);
-        gameState.updatedPlayerPositions.push_back({0, pos});
-        xs++; ys++;
 
         server.ReceivePackets();
 
@@ -254,10 +235,7 @@ int ServerMain()
                 for (int j = 0; j < 2; j++) {
                     yojimbo::Message* message = server.ReceiveMessage(i, j);
                     while (message != NULL) {
-                        // HERE processing message includes sending a response to the client
-                        printf("i: %d\n", i);
                         ProcessMessage(i, message, gameState, server);
-                        printf("There is a message!");
                         server.ReleaseMessage(i, message);
                         message = server.ReceiveMessage(i, j);
                     }
@@ -265,6 +243,15 @@ int ServerMain()
             }
         }
 
+        // Perform queued position updates
+        gameState.UpdatePlayerPositions();
+
+        // Broadcast updated player positions
+        // for (clientID i = 0; i < MAX_CLIENTS; i++) {
+        //     if (server.IsClientConnected(i)) {
+        //         broadcastUpdatedPlayerPosition(i, server, gameState);
+        //     }
+        // }
 
         time += deltaTime;
 

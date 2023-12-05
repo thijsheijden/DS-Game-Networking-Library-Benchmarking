@@ -30,6 +30,7 @@
 #include <time.h>
 #include <signal.h>
 #include "shared.h"
+#include <vector>
 
 using namespace yojimbo;
 
@@ -43,23 +44,50 @@ void interrupt_handler( int /*dummy*/ )
 class ClientGameState: public GameState {
 public:
     Player localPlayer;
-    std::map<clientID, Position> connectedPlayers;
+    std::map<clientID, Position> remotePlayerPositions;
 
     void CreateLocalPlayer(clientID playerID, Position spawnPos);
     void AddRemotePlayer(clientID remotePlayerID, Position pos);
     Position PerformLocalMove();
 };
 
+// we receive info from server that new player joined the game
 void AddRemotePlayer(clientID remotePlayerID, Position pos, ClientGameState& gameState) {
-    gameState.connectedPlayers[remotePlayerID] = pos;
+    gameState.remotePlayerPositions[remotePlayerID] = pos;
 }
 
-void ProcessTestMessage(TestMessage* message, ClientGameState& gameState) {
-    // printf("message received :%d ", message->m_data);
-    // printf(" Your boolean variable is: %s ", message->is_alive ? "true" : "false");
-    // printf("direction: %d \n", message->direction);
+Position PerformLocalMove(ClientGameState& gameState) {
+    std::vector<Position> possibleMoves;
 
-    // HERE update client state
+    auto localPlayerPos = gameState.localPlayer.pos;
+    if (gameState.localPlayer.pos.y > 0) possibleMoves.emplace_back(localPlayerPos.x, localPlayerPos.y - 1);
+    if (gameState.localPlayer.pos.y < gameState.mapHeight) possibleMoves.emplace_back(localPlayerPos.x, localPlayerPos.y + 1);
+    if (gameState.localPlayer.pos.x > 0) possibleMoves.emplace_back(localPlayerPos.x - 1, localPlayerPos.y);
+    if (gameState.localPlayer.pos.x < gameState.mapWidth) possibleMoves.emplace_back(localPlayerPos.x + 1, localPlayerPos.y);
+
+    // If the player can't perform any moves, remain at its current position
+    if (possibleMoves.empty()) return localPlayerPos;
+
+    // Choose random move
+    auto chosenMove = possibleMoves[random() % possibleMoves.size()];
+
+    // Make sure this move is not into a place someone else is currently in already
+    bool validMove = false;
+    while (!validMove) {
+        validMove = true;
+        for(auto remotePlayerPos: gameState.remotePlayerPositions) {
+            if (chosenMove == remotePlayerPos.second) {
+                chosenMove = possibleMoves[random() % possibleMoves.size()];
+                validMove = false;
+                break;
+            }
+        }
+    }
+
+    // Perform the move
+    gameState.localPlayer.pos = chosenMove;
+
+    return chosenMove;
 }
 
 void ProcessGameConfigMessage(GameConfigMessage* message, ClientGameState& gameState) {
@@ -74,26 +102,31 @@ void CreateLocalPlayer(clientID clientIndex, Position spawnPosition, ClientGameS
     gameState.localPlayer = Player(spawnPosition);
 }
 
+// we receive our start position from server
 void ProcessPlayerSpawnAndIdMessage(PlayerSpawnAndIDMessage* message, ClientGameState& gameState) {
     CreateLocalPlayer(message->playerID, Position(message->x, message->y), gameState);
     printf("received player spawn and id message: \n");
     printf("x: %d, y: %d \n", gameState.localPlayer.pos.x, gameState.localPlayer.pos.y);
 }
 
+// server decides what is our actual position after our every move
+// current player updates its position according to the info form server
 void ProcessNewPlayerJoinedMessage(NewPlayerJoinedMessage* message, ClientGameState& gameState) {
     AddRemotePlayer(message->playerID, Position(message->x, message->y), gameState);
-    printf("\n new player! x: %d, y: %d\n", gameState.connectedPlayers[message->playerID].x, gameState.connectedPlayers[message->playerID].y);
+    printf("\n new player! x: %d, y: %d\n", gameState.remotePlayerPositions[message->playerID].x, gameState.remotePlayerPositions[message->playerID].y);
 }
 
-// For now we only have TestMessage, message types can be added in the enum TestMessageType
-// in the shared.h file, add new message type to the enum, and create a new class which
-// inherits from yojimbo::Message. Remember about casting, for example (TestMessage*)message
+void ProcessPlayerPositionMessage(PlayerPositionMessage* message, ClientGameState& gameState) {
+    clientID playerToUpdate = message->playerID;
+    // if the current player doesn't know this new player exists
+    // then new entry is created in the map
+    gameState.remotePlayerPositions[playerToUpdate] = Position(message->x, message->y);
+    printf("player %d updated\n", playerToUpdate);
+}
+
 void ProcessMessage(yojimbo::Message* message, ClientGameState& gameState) {
     printf(" p ! ");
     switch (message->GetType()) {
-    case (int)TestMessageType::TEST_MESSAGE:
-        ProcessTestMessage((TestMessage*)message, gameState);
-        break;
     case (int)TestMessageType::GAME_CONFIG_MESSAGE:
         ProcessGameConfigMessage((GameConfigMessage*)message, gameState); 
         break;
@@ -103,18 +136,21 @@ void ProcessMessage(yojimbo::Message* message, ClientGameState& gameState) {
     case (int)TestMessageType::NEW_PLAYER_JOINED:
         ProcessNewPlayerJoinedMessage((NewPlayerJoinedMessage*)message, gameState);
         break;        
+    case (int)TestMessageType::PLAYER_POSITION_MESSAGE:
+        ProcessPlayerPositionMessage((PlayerPositionMessage*)message, gameState);    
+        break;
     default:
         break;
     }
 }
 
-void update_message_to_send(TestMessage* message) {
-    // HERE input information you want to send to the server
-    // You can check which fields are in the message in the shared.h
-    // class TestMessage 
-    message->m_data = 42;
-    message->direction = 3;
-    message->is_alive = true;
+void sendLocalPlayerMove(clientID clientIndex, Position newPos, Client& client) {
+    PlayerMoveMessage* player_move_message = (PlayerMoveMessage*)client.CreateMessage((int)TestMessageType::PLAYER_MOVE_MESSAGE);
+    player_move_message->x = newPos.x;
+    player_move_message->y = newPos.y;
+    player_move_message->playerID = clientIndex;
+    client.SendMessage((int)GameChannel::RELIABLE, player_move_message);
+    client.SendPackets();
 }
 
 int ClientMain( int argc, char * argv[] )
@@ -160,21 +196,14 @@ int ClientMain( int argc, char * argv[] )
     // We don not accept any other message before we receive game config
     bool configReceived = false;
     bool playerSpawnAndIdReceived = false;
+    bool first = true;
+    int count = 0;
 
     while ( !quit )
     {        
 
-        TestMessage* message = (TestMessage*)client.CreateMessage((int)TestMessageType::TEST_MESSAGE);
-        printf("Send!  ");
-        update_message_to_send(message);        
-        client.SendMessage((int)GameChannel::RELIABLE, message);
-        client.SendPackets();
-
-
         client.ReceivePackets();
 
-        // Process received messages
-        // 2 is num of channels
         for (int i = 0; i < 2; i++) {
             yojimbo::Message* message = client.ReceiveMessage(i);
             while (message != NULL) {
@@ -205,6 +234,16 @@ int ClientMain( int argc, char * argv[] )
             }
         }
         
+        // once we receive config start moving on the board
+        if (configReceived) {
+            auto newPlayerPos = PerformLocalMove(gameState);
+            printf("my new position is (%u, %u)\n", newPlayerPos.x, newPlayerPos.y);
+
+            // Push action to the server
+            sendLocalPlayerMove(clientId, newPlayerPos, client);
+        }
+
+
         if ( client.IsDisconnected() )
             break;
      

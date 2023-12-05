@@ -102,30 +102,6 @@ struct GameConnectionConfig : yojimbo::ClientServerConfig {
     }
 };
 
-class TestMessage : public yojimbo::Message {
-public:
-    // HERE add the data you want to send between client and server
-    // remember to serialize it in the Serialize function 
-    int m_data;
-    int direction;
-    bool is_alive;
-
-    TestMessage() :
-        m_data(0) {}
-
-    template <typename Stream>
-    bool Serialize(Stream& stream) {
-        // HERE add serialization of the fields
-        serialize_int(stream, m_data, 0, 512);
-        serialize_int(stream, direction, 0, 512);
-        serialize_bool(stream, is_alive);
-
-        return true;
-    }
-
-    YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();
-};
-
 class GameConfigMessage : public yojimbo::Message {
 public:
     uint16_t mapWidth;
@@ -206,22 +182,42 @@ public:
     YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();    
 };
 
+class PlayerPositionMessage : public yojimbo::Message {
+public:
+    coord x;
+    coord y;
+    clientID playerID;
+
+    PlayerPositionMessage() : x(0), y(0), playerID(0) {}
+
+    template <typename Stream>
+    bool Serialize(Stream& stream) {
+        serialize_int(stream, x, 0, 512);
+        serialize_int(stream, y, 0, 512);
+        serialize_int(stream, playerID, 0, 512);
+
+        return true;
+    }
+
+    YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();    
+};
+
 enum TestMessageType
 {
-    TEST_MESSAGE,
     GAME_CONFIG_MESSAGE,
     PLAYER_SPAWN_AND_ID_MESSAGE,
     NEW_PLAYER_JOINED,
     PLAYER_MOVE_MESSAGE,
+    PLAYER_POSITION_MESSAGE,
     NUM_TEST_MESSAGE_TYPES
 };
 
 YOJIMBO_MESSAGE_FACTORY_START( TestMessageFactory, NUM_TEST_MESSAGE_TYPES );
-YOJIMBO_DECLARE_MESSAGE_TYPE( TEST_MESSAGE, TestMessage );
 YOJIMBO_DECLARE_MESSAGE_TYPE( GAME_CONFIG_MESSAGE, GameConfigMessage ); 
 YOJIMBO_DECLARE_MESSAGE_TYPE( NEW_PLAYER_JOINED, NewPlayerJoinedMessage ); 
 YOJIMBO_DECLARE_MESSAGE_TYPE( PLAYER_SPAWN_AND_ID_MESSAGE, PlayerSpawnAndIDMessage ); 
 YOJIMBO_DECLARE_MESSAGE_TYPE( PLAYER_MOVE_MESSAGE, PlayerMoveMessage );
+YOJIMBO_DECLARE_MESSAGE_TYPE( PLAYER_POSITION_MESSAGE, PlayerPositionMessage );
 YOJIMBO_MESSAGE_FACTORY_FINISH();
 
 

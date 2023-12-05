@@ -40,28 +40,69 @@ void interrupt_handler( int /*dummy*/ )
     quit = 1;
 }
 
-struct ClientGameState {
-    // HERE you can update your game state on the client side
-    int count;
+class ClientGameState: public GameState {
+public:
+    Player localPlayer;
+    std::map<clientID, Position> connectedPlayers;
+
+    void CreateLocalPlayer(clientID playerID, Position spawnPos);
+    void AddRemotePlayer(clientID remotePlayerID, Position pos);
+    Position PerformLocalMove();
 };
 
+void AddRemotePlayer(clientID remotePlayerID, Position pos, ClientGameState& gameState) {
+    gameState.connectedPlayers[remotePlayerID] = pos;
+}
+
 void ProcessTestMessage(TestMessage* message, ClientGameState& gameState) {
-    printf("message received :%d ", message->m_data);
-    printf(" Your boolean variable is: %s ", message->is_alive ? "true" : "false");
-    printf("direction: %d \n", message->direction);
+    // printf("message received :%d ", message->m_data);
+    // printf(" Your boolean variable is: %s ", message->is_alive ? "true" : "false");
+    // printf("direction: %d \n", message->direction);
 
     // HERE update client state
+}
+
+void ProcessGameConfigMessage(GameConfigMessage* message, ClientGameState& gameState) {
+    gameState.mapHeight = message->mapHeight;
+    gameState.mapWidth = message->mapWidth;
+    gameState.numPlayers = message->numPlayers;
+    printf("Received config message: \n");
+    printf("width: %d \n", gameState.mapWidth);
+}
+
+void CreateLocalPlayer(clientID clientIndex, Position spawnPosition, ClientGameState& gameState) {
+    gameState.localPlayer = Player(spawnPosition);
+}
+
+void ProcessPlayerSpawnAndIdMessage(PlayerSpawnAndIDMessage* message, ClientGameState& gameState) {
+    CreateLocalPlayer(message->playerID, Position(message->x, message->y), gameState);
+    printf("received player spawn and id message: \n");
+    printf("x: %d, y: %d \n", gameState.localPlayer.pos.x, gameState.localPlayer.pos.y);
+}
+
+void ProcessNewPlayerJoinedMessage(NewPlayerJoinedMessage* message, ClientGameState& gameState) {
+    AddRemotePlayer(message->playerID, Position(message->x, message->y), gameState);
+    printf("\n new player! x: %d, y: %d\n", gameState.connectedPlayers[message->playerID].x, gameState.connectedPlayers[message->playerID].y);
 }
 
 // For now we only have TestMessage, message types can be added in the enum TestMessageType
 // in the shared.h file, add new message type to the enum, and create a new class which
 // inherits from yojimbo::Message. Remember about casting, for example (TestMessage*)message
 void ProcessMessage(yojimbo::Message* message, ClientGameState& gameState) {
-    printf(" processing! ");
+    printf(" p ! ");
     switch (message->GetType()) {
     case (int)TestMessageType::TEST_MESSAGE:
         ProcessTestMessage((TestMessage*)message, gameState);
         break;
+    case (int)TestMessageType::GAME_CONFIG_MESSAGE:
+        ProcessGameConfigMessage((GameConfigMessage*)message, gameState); 
+        break;
+    case (int)TestMessageType::PLAYER_SPAWN_AND_ID_MESSAGE:        
+        ProcessPlayerSpawnAndIdMessage((PlayerSpawnAndIDMessage*)message, gameState);
+        break;
+    case (int)TestMessageType::NEW_PLAYER_JOINED:
+        ProcessNewPlayerJoinedMessage((NewPlayerJoinedMessage*)message, gameState);
+        break;        
     default:
         break;
     }
@@ -108,26 +149,23 @@ int ClientMain( int argc, char * argv[] )
     client.GetAddress().ToString( addressString, sizeof( addressString ) );
     printf( "client address is %s\n", addressString );
 
+    // How much time we wait between while iterations
     const double deltaTime = 0.1f;
 
     signal( SIGINT, interrupt_handler );
 
     // HERE you can initialize game state
-    struct ClientGameState gameState = {0};
+    struct ClientGameState gameState;
+
+    // We don not accept any other message before we receive game config
+    bool configReceived = false;
+    bool playerSpawnAndIdReceived = false;
 
     while ( !quit )
-    {
-        
-        // send message doesn't actually send anything, it's more like send message prepared the buffer
-        // and then we must call send packets
-        // Test message is defined in the shared.h and you can specify its type there
-        // channel types are defined in shared.h game config
+    {        
 
-
-        // HERE specify when to send a message
-        // now the same message is being sent all the time in a loop
         TestMessage* message = (TestMessage*)client.CreateMessage((int)TestMessageType::TEST_MESSAGE);
-        printf("Sending message!");
+        printf("Send!  ");
         update_message_to_send(message);        
         client.SendMessage((int)GameChannel::RELIABLE, message);
         client.SendPackets();
@@ -140,8 +178,28 @@ int ClientMain( int argc, char * argv[] )
         for (int i = 0; i < 2; i++) {
             yojimbo::Message* message = client.ReceiveMessage(i);
             while (message != NULL) {
-                ProcessMessage(message, gameState);
-                printf("There is a message!");
+                // We want to first receive config,
+                // then player spawn and id
+                // and then we listen for any other messages
+                if (!configReceived) {
+                    if (message->GetType() == (int)TestMessageType::GAME_CONFIG_MESSAGE) {
+                        configReceived = true;
+                        ProcessMessage(message, gameState);
+                    } else {
+                        printf("received message of type '%u'\n", message->GetType());
+                    }
+                } else {
+                    if(!playerSpawnAndIdReceived) {
+                        if (message->GetType() == (int)TestMessageType::PLAYER_SPAWN_AND_ID_MESSAGE) {
+                            playerSpawnAndIdReceived = true;
+                            ProcessMessage(message, gameState);
+                        } else {
+                            printf("received message of type '%u'\n", message->GetType());
+                        }
+                    } else {
+                        ProcessMessage(message, gameState);
+                    }
+                }
                 client.ReleaseMessage(message);
                 message = client.ReceiveMessage(i);
             }

@@ -22,6 +22,8 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// shared.h
+
 #ifndef SHARED_H
 #define SHARED_H
 
@@ -31,11 +33,59 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <time.h>
+#include <string>
 
 using namespace yojimbo;
 
 const int ClientPort = 30000;
 const int ServerPort = 40000;
+
+using clientID = uint8_t;
+using coord = uint16_t;
+using address = std::string;
+
+class GameState {
+    public:
+    uint16_t mapWidth;
+    uint16_t mapHeight;
+    uint16_t numPlayers;
+
+    void ApplyConfig(uint16_t _mapWidth, uint16_t _mapHeight, uint16_t _numPlayers) {
+        mapWidth = _mapWidth;
+        mapHeight = _mapHeight;
+        numPlayers = _numPlayers;
+    }
+};
+
+struct Position 
+{
+    public:
+        coord x;
+        coord y;
+
+    Position() = default;
+    Position(coord initialX, coord initialY)
+    {
+        x = initialX;
+        y = initialY;
+    }
+
+    bool operator==(Position &p2) {
+        return x == p2.x && y == p2.y;
+    }
+};
+
+class Player
+{
+public:
+    Position pos;
+    uint8_t health = 3;
+
+    Player() = default;
+    Player(Position _pos) {
+        pos = _pos;
+    }
+};
 
 // two channels, one for each type that Yojimbo supports
 enum class GameChannel {
@@ -51,7 +101,6 @@ struct GameConnectionConfig : yojimbo::ClientServerConfig {
         channel[(int)GameChannel::UNRELIABLE].type = yojimbo::CHANNEL_TYPE_UNRELIABLE_UNORDERED;
     }
 };
-
 
 class TestMessage : public yojimbo::Message {
 public:
@@ -77,15 +126,102 @@ public:
     YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
+class GameConfigMessage : public yojimbo::Message {
+public:
+    uint16_t mapWidth;
+    uint16_t mapHeight;
+    uint16_t numPlayers;
+
+    GameConfigMessage() : mapWidth(0), mapHeight(0), numPlayers(0) {}
+
+    template <typename Stream>
+    bool Serialize(Stream& stream) {
+        serialize_int(stream, mapWidth, 0, 512);
+        serialize_int(stream, mapHeight, 0, 512);
+        serialize_int(stream, numPlayers, 0, 512);
+
+        return true;
+    }
+
+    YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+class PlayerSpawnAndIDMessage : public yojimbo::Message {
+public:
+    coord x;
+    coord y;
+    clientID playerID;
+
+    PlayerSpawnAndIDMessage() : x(0), y(0), playerID(0) {}
+
+    template <typename Stream>
+    bool Serialize(Stream& stream) {
+        serialize_int(stream, x, 0, 512);
+        serialize_int(stream, y, 0, 512);
+        serialize_int(stream, playerID, 0, 512);
+
+        return true;
+    }
+
+    YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();    
+};
+
+class NewPlayerJoinedMessage : public yojimbo::Message {
+public:
+    coord x;
+    coord y;
+    clientID playerID;
+
+    NewPlayerJoinedMessage() : x(0), y(0), playerID(0) {}
+
+    template <typename Stream>
+    bool Serialize(Stream& stream) {
+        serialize_int(stream, x, 0, 512);
+        serialize_int(stream, y, 0, 512);
+        serialize_int(stream, playerID, 0, 512);
+
+        return true;
+    }
+
+    YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();    
+};
+
+class PlayerMoveMessage : public yojimbo::Message {
+public:
+    coord x;
+    coord y;
+    clientID playerID;
+
+    PlayerMoveMessage() : x(0), y(0), playerID(0) {}
+
+    template <typename Stream>
+    bool Serialize(Stream& stream) {
+        serialize_int(stream, x, 0, 512);
+        serialize_int(stream, y, 0, 512);
+        serialize_int(stream, playerID, 0, 512);
+
+        return true;
+    }
+
+    YOJIMBO_VIRTUAL_SERIALIZE_FUNCTIONS();    
+};
 
 enum TestMessageType
 {
     TEST_MESSAGE,
+    GAME_CONFIG_MESSAGE,
+    PLAYER_SPAWN_AND_ID_MESSAGE,
+    NEW_PLAYER_JOINED,
+    PLAYER_MOVE_MESSAGE,
     NUM_TEST_MESSAGE_TYPES
 };
 
 YOJIMBO_MESSAGE_FACTORY_START( TestMessageFactory, NUM_TEST_MESSAGE_TYPES );
 YOJIMBO_DECLARE_MESSAGE_TYPE( TEST_MESSAGE, TestMessage );
+YOJIMBO_DECLARE_MESSAGE_TYPE( GAME_CONFIG_MESSAGE, GameConfigMessage ); 
+YOJIMBO_DECLARE_MESSAGE_TYPE( NEW_PLAYER_JOINED, NewPlayerJoinedMessage ); 
+YOJIMBO_DECLARE_MESSAGE_TYPE( PLAYER_SPAWN_AND_ID_MESSAGE, PlayerSpawnAndIDMessage ); 
+YOJIMBO_DECLARE_MESSAGE_TYPE( PLAYER_MOVE_MESSAGE, PlayerMoveMessage );
 YOJIMBO_MESSAGE_FACTORY_FINISH();
 
 

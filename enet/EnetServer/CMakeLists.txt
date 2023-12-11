@@ -1,8 +1,6 @@
-﻿# CMakeList.txt : CMake project for EnetGame, include source and define
-# project specific logic here.
-#
+﻿# CMakeList.txt : CMake project for EnetServer, include source and define
 # Add source to this project's executable.
-add_executable (EnetServer "Packet.cpp" "Packet.hpp" "server.cpp")
+add_executable (EnetServer "server.cpp")
 target_include_directories(EnetServer PRIVATE 
                                             "../enet/include" 
                                                 "../common")

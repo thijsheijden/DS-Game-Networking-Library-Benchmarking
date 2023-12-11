@@ -3,7 +3,6 @@
 #include <system_error>
 #include <queue>
 #include "common.h"
-#include "Events.hpp"
 #include <enet/enet.h>
 #include "vector"
 #include "Client.h"
@@ -24,22 +23,22 @@ public:
 
     Gamestate(int numPlayers)
     {
-        Position position;
+        PositionUpdateMessage position;
         otherPlayers = std::vector<Client>(numPlayers);
-        bombs = std::vector<Bomb>(numPlayers * 3);
+        //bombs = std::vector<Bomb>(numPlayers * 3);
     };
-    void updateGameState(std::vector<Client>, std::vector<Bomb>);
+   // void updateGameState(std::vector<Client>, std::vector<Bomb>);
 private:
     std::vector<Client> otherPlayers;
-    std::vector<Bomb> bombs;
+    //std::vector<Bomb> bombs;
 };
 class Game
 {
 public:
     Game(int width, int height);
     void startGameLoop();
-    void moveLocalPlayer(Position newPos);
-    GameState game_state;
+    void moveLocalPlayer(PositionUpdateMessage newPos);
+    //GameState game_state;
 private:
     int numPlayers;
     int mapHeight;
@@ -47,7 +46,7 @@ private:
     char errBuff[GAME_ERR_BUFF_SIZE]{};
     int tick();
     Client* m_client = new Client();
-    std::map<int, Position> m_others; 
+    std::map<int, PositionUpdateMessage> m_others; 
 
 };
 

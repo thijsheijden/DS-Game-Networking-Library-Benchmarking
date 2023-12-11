@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <thread>
 #include <future>
+#include <fstream>
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "winmm.lib")
 #define MAX_POSITION_CORRECTION  2
@@ -27,15 +28,7 @@ PositionUpdateMessage deserialize_struct(auto buffer)
 	return result;
 }
 
-auto serialize_struct(PositionUpdateMessage pos)
-{
-	ENetPacket* packet;
 
-	uint8_t buffer[sizeof(PositionUpdateMessage)];
-	memcpy(buffer, &pos, sizeof(PositionUpdateMessage));
-	packet = enet_packet_create(buffer, sizeof(PositionUpdateMessage), ENET_PACKET_FLAG_RELIABLE);
-	return packet;
-}
 void introduceLatency(auto& event, auto& prevPos, auto& pos) 
 {
 	static std::mutex posMutex;
@@ -57,7 +50,7 @@ int main(int argc, char** argv)
 	ENetAddress address;
 	ENetHost* server;
 	ENetEvent event;
-
+	int fixCount = -1;
 
 	address.host = ENET_HOST_ANY;
 	address.port = 60000;
@@ -74,7 +67,13 @@ int main(int argc, char** argv)
 	}
 	ENetPacket* packet;
 	PositionUpdateMessage pos;
-
+	PositionUpdateMessage prevPos;
+	PositionUpdateMessage val;
+	ENetPeer* sender;
+	auto simulationDuration = std::chrono::seconds(1000);
+	auto startTime = std::chrono::high_resolution_clock::now();
+	auto now = startTime;
+	ENetPeer* peer;
 #pragma region game_loop
 	while (true)
 	{
@@ -96,27 +95,49 @@ int main(int argc, char** argv)
 			}
 			case ENET_EVENT_TYPE_RECEIVE:
 			{
-				auto val = deserialize_struct(event.packet->data);
+				 val = deserialize_struct(event.packet->data);
+				
 				switch ((Event)val.messageType)
 				{
-				//Broadcast positon update
+					//Broadcast positon update
 				case Event::POSITION_UPDATE:
-					PositionUpdateMessage prevPos;
-					auto sender = event.peer;
+
+					sender = event.peer;
 					pos.messageType = Event::POSITION_UPDATE;
 					pos.ownerId = event.peer->incomingPeerID;
 					pos.x = val.x;
 					pos.y = val.y;
+					//does not actually corrects the position
+					if (event.peer->incomingPeerID == 2)
+					{
+						static bool once = 1;
+						if (once)
+						{
+							printf("id 2 port: %d", event.peer->address.port);
+							once = 0;
+						}
+						if (std::abs(pos.x - prevPos.x) > MAX_POSITION_CORRECTION || std::abs(pos.y - prevPos.y) > MAX_POSITION_CORRECTION)
+						{
+							printf("Position correction applied for %d\n", event.peer->incomingPeerID);
+							fixCount++;
+						}
+						prevPos = pos;
+					}
+					uint8_t buffer[sizeof(PositionUpdateMessage)];
+					memcpy(buffer, &pos, sizeof(PositionUpdateMessage));
+					packet = enet_packet_create(buffer, sizeof(PositionUpdateMessage), ENET_PACKET_FLAG_RELIABLE);
 					for (size_t i = 0; i < server->peerCount; ++i) {
-						ENetPeer* peer = &server->peers[i];
-						if (peer != sender) {
-							enet_peer_send(peer, 0, serialize_struct(pos));
+						peer = &server->peers[i];
+						if (peer != sender) { 							
+							enet_peer_send(peer, 0, packet);
 						}
 					}
+					//enet_packet_destroy(packet);
+
+				
 					break;
 				}
 				//Clean up the packet
-				enet_packet_destroy(event.packet);
 
 				break;
 			}
@@ -128,8 +149,18 @@ int main(int argc, char** argv)
 
 			}
 		}
+		now = std::chrono::high_resolution_clock::now();
+		if (now - startTime >= simulationDuration)
+		{
+			break;
+		}
+		
+		
 	}
 #pragma endregion game_loop
+	std::ofstream file("fix.txt");
+	file << fixCount; 
+	file.close();
 	enet_host_destroy(server);
 	return EXIT_SUCCESS;
 

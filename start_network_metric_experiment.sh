@@ -1,50 +1,48 @@
 # Libraries to test, directory should have the same name
-libraries=("raknet")
+libraries=("raknet" "enet")
 
 for library in ${libraries[@]}; do
 	# Tracked started background processes
 	pids=()
 
-	cd $library
-
-	# Create build dir
-	cmake -S . -B build > /dev/null
-
 	# Build client and server binaries
-	echo "Building $library client and server"
-	cmake --build build > /dev/null
+	cd $library
+	source build.sh
+	cd ..
 	
 	# Start logging network traffic using tshark
 	output_file_name="network_metrics_"$library"_$(date +"%s").csv"
 	echo "Logging network metrics to $output_file_name"
-	tshark -i lo0 -f "port 60000" -T fields -e frame.time_relative -e frame.number -e frame.len -E header=y -E separator=, > "../network_usage_benchmark_output/$output_file_name" &
-	pids+=($!)
-	echo "Started tshark ($!) logging of packets to and from port 60,000"
+	tshark -i lo0 -f "port 60000" -T fields -e frame.time_relative -e frame.number -e frame.len -E header=y -E separator=, > "network_usage_benchmark_output/$output_file_name" &
+	tshark_pid=$!
+	echo "Started tshark ($tshark_pid) logging of packets to and from port 60,000"
 
 	# Start the server in background process
-	(./build/server > /dev/null) &
+	(./$library/server_bin > /dev/null) &
 	pids+=($!)
 	echo "Started server ($!)"
 	
 	# Start two clients
-	(./build/client > /dev/null) &
+	(./$library/client_bin > /dev/null) &
 	pids+=($!)
 	echo "Started client 1 ($!)"
-	(./build/client > /dev/null) &
+	(./$library/client_bin > /dev/null) &
 	pids+=($!)
 	echo "Started client 2 ($!)"
 
 	# Run simulation for 60 seconds
-	sleep 60
+	sleep 10
 
-	# Gracefully kill all started jobs
+	# Gracefully kill tshark
+	kill -2 $tshark_pid
+	
+	# Forcefully kill binaries
 	for pid in ${pids[@]}; do
 		echo "Killing $pid"
-		kill -2 $pid > /dev/null
+		kill -9 $pid > /dev/null
 	done
 
 	# Process output data
 	echo "Processing packet dump for $library"
-	cd ../network_usage_benchmark_output
-	python3 process.py "$output_file_name"
+	python3 network_usage_benchmark_output/process.py "network_usage_benchmark_output/$output_file_name"
 done

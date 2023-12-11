@@ -18,7 +18,7 @@ int Client::formConnection()
 #pragma endregion Init Enet and Client
 #pragma region HandleConnection
     enet_address_set_host(&address, "127.0.0.1");
-    address.port = 1234;
+    address.port = 60000;
     client = enet_host_create(NULL, 1, 2,
         0      /* assume any amount of incoming bandwidth */,
         0      /* assume any amount of outgoing bandwidth */);

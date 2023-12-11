@@ -32,7 +32,7 @@ Game::Game(int width, int height)
 }
 
 void Game::startGameLoop() {
-	using Framerate = duration<steady_clock::rep, std::ratio<1, 5>>; // 5 ticks per second
+	using Framerate = duration<steady_clock::rep, std::ratio<1, 20>>; // 1 ticks per second
 	auto next = steady_clock::now() + Framerate{ 1 };
 
 	while (true)

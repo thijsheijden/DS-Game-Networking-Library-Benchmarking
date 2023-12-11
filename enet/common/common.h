@@ -6,14 +6,11 @@
 //Basic events of the game
 enum class Event
 {
-  BROADCAST_POSITION = 5,
-  RECIEVED_POSITION = 6,
-  BROADCAST_HEALTH ,
-  MAP_SIZE,
-  BROADCAST_STATS,
-  BOMB_PLACED,
-  BOMB_EXPLODED,
-  UNKNOWN = 255
+    POSITION_UPDATE = 5,
+    RECIEVED_POSITION = 6,
+    GAME_CONFIG,
+    PLAYER_JOIN,
+    UNKNOWN = 255
 };
 enum class PossibleMovements : uint8_t {
     PLAYER_MOVE_UP = 10,
@@ -21,75 +18,41 @@ enum class PossibleMovements : uint8_t {
     PLAYER_MOVE_LEFT,
     PLAYER_MOVE_RIGHT
 };
-// Define entity type could be handy for messages and game logic
-enum class EntityType
+
+
+//Update player position
+#pragma pack(push,1)
+struct PositionUpdateMessage
 {
-  USER,
-  BOMB
+    Event messageType = Event::POSITION_UPDATE;
+    uint16_t x;
+    uint16_t y;
+    uint16_t ownerId;
+    PositionUpdateMessage() = default;
+    PositionUpdateMessage(uint16_t _x, uint16_t _y, uint16_t _ownerId) : x(_x), y(_y), ownerId(_ownerId) {}
+
 };
+#pragma pack(pop)
 
-//struct Options
-//{
-//    std::optional<bool> gui = false; // Whether to show a simple GUI showing the game (NOT USED RIGHT NOW)
-//    std::optional<float> mapHeight = 10;
-//    std::optional<float> mapWidth = 10;
-//};
-
-struct Position
-{
-    int x;
-    int y;
-    int opt_code;
+// GameConfig is the message that is sent when a client connects, containing the config for the current game
+#pragma pack(push, 1)
+struct GameConfigMessage {
+    Event messageType = Event::GAME_CONFIG;
+    uint16_t mapWidth;
+    uint16_t mapHeight;
+    uint16_t playerCount;
     int ownerId;
-    Position()=default;
-    Position(int initialX, int initialY)
-    {
-        x = initialX;
-        y = initialY;
-    }
-    std::string serialize(int peerID) const {
-        return std::to_string(peerID) + "," + std::to_string(x) + "," + std::to_string(y) + "," + std::to_string(opt_code);
-    }
-
-    // Deserialization method
-    void deserialize(const std::string& data, int &id) {
-        std::istringstream ss(data);
-        char dummy;
-        try 
-        {
-            if (ss >> ownerId >> dummy >>  x >> dummy >> y >> dummy >> id)
-            {
-                return;
-            }
-            else
-            {
-                throw std::invalid_argument("Error parsing data.");
-            }
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "Exception: " << e.what() << std::endl;
-        }
-        
-    }
+    GameConfigMessage(uint16_t _mapWidth, uint16_t _mapHeight, uint16_t _playerCount) : mapWidth(_mapWidth), mapHeight(_mapHeight), playerCount(_playerCount) {}
 };
+#pragma pack(pop)
 
-struct Bomb
-{
-    Position pos;
-    bool explode;
-    Bomb() = default;
+// NewPlayerJoinMessage is broadcast to all clients when a new player joins
+#pragma pack(push, 1)
+struct NewPlayerJoinMessage {
+    Event messageType = Event::PLAYER_JOIN;
+    PositionUpdateMessage spawnPoint;
+    uint16_t ownerId;
+    NewPlayerJoinMessage(PositionUpdateMessage _spawnPoint):  spawnPoint(_spawnPoint), ownerId(_spawnPoint.ownerId) {}
 };
-
-
-
-// Basically all the data we need for a client to define the next tick
-struct GameState
-{
-    float health;
-    Position position;
-    //other players positions
-   
-};
-
+#pragma pack(pop)
 

@@ -6,20 +6,22 @@ using namespace std::chrono;
 #pragma region Packeting
 namespace Packet
 {
-	ENetPacket* create_string_packet(const std::string& data)
-	{
-		return  enet_packet_create(data.c_str(), data.size() + 1, ENET_PACKET_FLAG_RELIABLE);
-	}
-
 	decltype(auto) send_packet = [](ENetPeer* peer, const auto& data)
 	{
 		ENetPacket* packet = nullptr;
-		packet = create_string_packet(data);
+		//packet = create_string_packet(data);
+		packet = enet_packet_create(data, sizeof(PositionUpdateMessage), ENET_PACKET_FLAG_RELIABLE);
+
 		enet_peer_send(peer, 0, packet);
 	};
 }
 #pragma endregion Packeting
-
+PositionUpdateMessage deserialize_struct(const auto buffer)
+{
+	PositionUpdateMessage result;
+	memcpy(&result, buffer, sizeof(PositionUpdateMessage));
+	return result;
+}
 Game::Game(int width, int height)
 {
 	mapHeight = height;
@@ -44,7 +46,7 @@ void Game::startGameLoop() {
 
 }
 
-void Game::moveLocalPlayer(Position newPos)
+void Game::moveLocalPlayer(PositionUpdateMessage newPos)
 {
 	m_client->pos = newPos;
 	printf("moved local player to x: %d, y: %d\n", m_client->pos.x, m_client->pos.y);
@@ -58,31 +60,32 @@ void Game::moveLocalPlayer(Position newPos)
 // returns non-zero if an error has occurred
 int Game::tick()
 {
-	std::vector<std::pair<PossibleMovements, Position>> possibleActions;
+	std::vector<std::pair<PossibleMovements, PositionUpdateMessage>> possibleActions;
 
-	Position playerPos = m_client->pos;
+	PositionUpdateMessage playerPos = m_client->pos;
 	if (playerPos.y >= 1) {
-		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_UP, Position(playerPos.x, playerPos.y - 1));
+		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_UP, PositionUpdateMessage(playerPos.x, playerPos.y - 1,0));
 	}
 	if (playerPos.y <= mapHeight - 1) {
-		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_DOWN, Position(playerPos.x, playerPos.y + 1));
+		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_DOWN, PositionUpdateMessage(playerPos.x, playerPos.y + 1, 0));
 	}
 	if (playerPos.x >= 1) {
-		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_LEFT, Position(playerPos.x - 1, playerPos.y));
+		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_LEFT, PositionUpdateMessage(playerPos.x - 1, playerPos.y, 0));
 	}
 	if (playerPos.x <= mapWidth - 1) {
-		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_RIGHT, Position(playerPos.x + 1, playerPos.y));
+		possibleActions.emplace_back(PossibleMovements::PLAYER_MOVE_RIGHT, PositionUpdateMessage(playerPos.x + 1, playerPos.y, 0));
 	}
 
 	// Choose a random action to perform
-	std::pair<PossibleMovements, Position> chosenAction = possibleActions[rand() % (possibleActions.size() > 0 ? possibleActions.size() : 1)];
+	std::pair<PossibleMovements, PositionUpdateMessage> chosenAction = possibleActions[rand() % (possibleActions.size() > 0 ? possibleActions.size() : 1)];
 
 	// Perform the action
 	moveLocalPlayer(chosenAction.second);
-	m_client->pos.opt_code = 5;
-	std::string serialized = m_client->pos.serialize(m_client->peer->outgoingPeerID);
-
-	Packet::send_packet(m_client->peer, serialized);
+	
+	m_client->pos.messageType = Event::POSITION_UPDATE;
+	uint8_t buffer[sizeof(PositionUpdateMessage)];
+	memcpy(buffer, &m_client->pos, sizeof(PositionUpdateMessage));
+	Packet::send_packet(m_client->peer, buffer);
 
 	auto event = m_client->event;
 	while (enet_host_service(m_client->client, &event, 0) > 0)
@@ -91,18 +94,14 @@ int Game::tick()
 		{
 		case ENET_EVENT_TYPE_RECEIVE: {
 
-			int eventType = 0;
-			std::string convertedString(reinterpret_cast<char*>(event.packet->data), event.packet->dataLength);
-			Position pos;
-			pos.deserialize(convertedString, eventType);
-			pos.opt_code = eventType;
-			switch ((Event)eventType)
+			auto data = deserialize_struct(event.packet->data);
+			switch ((Event)data.messageType)
 			{
 
-			case Event::RECIEVED_POSITION:
+			case Event::POSITION_UPDATE:
 
-				m_others[pos.ownerId] = pos;
-				printf("Recieved position for %d, x: %d,y: %d\n", pos.ownerId, pos.x, pos.y);
+				m_others[data.ownerId] = data;
+				printf("Recieved position for %d, x: %d,y: %d\n", data.ownerId, data.x, data.y);
 				break;
 			}
 			break;
@@ -119,7 +118,7 @@ int Game::tick()
 	return 0;
 }
 //TODO: Implement if neccessary
-void Gamestate::updateGameState(std::vector<Client> pClients, std::vector<Bomb>)
-{
-	otherPlayers = pClients;
-}
+//void Gamestate::updateGameState(std::vector<Client> pClients, std::vector<Bomb>)
+//{
+//	otherPlayers = pClients;
+//}

@@ -1,12 +1,10 @@
-﻿# CMakeList.txt : CMake project for EnetGame, include source and define
-# project specific logic here.
-#
-# Add source to this project's executable.
+﻿# CMakeList.txt : CMake project for EnetClient, include source and define
+
 if(UNIX)
     set(CMAKE_C_COMPILER gcc)
     set(CMAKE_CXX_COMPILER g++)
 endif()
-add_executable (EnetClient "Client.h" "Client.cpp" "Packet.hpp" "Packet.cpp" "main.cpp" "Game.h" "Game.cpp" )
+add_executable (EnetClient "Client.h" "Client.cpp" "main.cpp" "Game.h" "Game.cpp" )
 target_include_directories(EnetClient PRIVATE 
                                             "../enet/include" 
                                                 "../common")

@@ -185,8 +185,8 @@ int ClientMain( int argc, char * argv[] )
     client.GetAddress().ToString( addressString, sizeof( addressString ) );
     printf( "client address is %s\n", addressString );
 
-    // How much time we wait between while iterations
-    const double deltaTime = 0.1f;
+    // How much time we wait between while iterations (tick rate of 20hz)
+    const double deltaTime = 0.05f;
 
     signal( SIGINT, interrupt_handler );
 

@@ -9,7 +9,7 @@ using namespace chrono;
 // StartGameLoop starts the server game loop, this is a blocking call, so should either be the last thing called in main
 // or be started in a thread
 void Server::StartGameLoop() {
-    using Framerate = duration<steady_clock::rep, ratio<1, 5>>; // 20 ticks per second
+    using Framerate = duration<steady_clock::rep, ratio<1, 20>>; // 20 ticks per second
     auto next = steady_clock::now() + Framerate{1};
 
     // Packet pointer

@@ -72,7 +72,7 @@ void Client::WaitForPlayerSpawn() {
 
 // StartGameloop starts the client game loop
 void Client::StartGameloop(bool display) {
-    using Framerate = duration<steady_clock::rep, ratio<1, 5>>; // 20 ticks per second
+    using Framerate = duration<steady_clock::rep, ratio<1, 20>>; // 20 ticks per second
     auto next = steady_clock::now() + Framerate{1};
 
     // Packet pointer

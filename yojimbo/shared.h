@@ -37,8 +37,8 @@
 
 using namespace yojimbo;
 
-const int ClientPort = 30000;
-const int ServerPort = 40000;
+const int ClientPort = 60000;
+const int ServerPort = 60000;
 
 using clientID = uint8_t;
 using coord = uint16_t;

@@ -194,8 +194,8 @@ int ServerMain()
     server.GetAddress().ToString( addressString, sizeof( addressString ) );
     printf( "server address is %s\n", addressString );
 
-    // How much time we wait between while iterations
-    const double deltaTime = 0.1f;
+    // How much time we wait between while iterations (20hz)
+    const double deltaTime = 0.05f;
 
     signal( SIGINT, interrupt_handler );    
 

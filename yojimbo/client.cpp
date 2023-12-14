@@ -144,12 +144,12 @@ void ProcessMessage(yojimbo::Message* message, ClientGameState& gameState) {
     }
 }
 
-void sendLocalPlayerMove(clientID clientIndex, Position newPos, Client& client) {
+void sendLocalPlayerMove(clientID clientIndex, Position newPos, Client& client, int channel_type) {
     PlayerMoveMessage* player_move_message = (PlayerMoveMessage*)client.CreateMessage((int)TestMessageType::PLAYER_MOVE_MESSAGE);
     player_move_message->x = newPos.x;
     player_move_message->y = newPos.y;
     player_move_message->playerID = clientIndex;
-    client.SendMessage((int)GameChannel::RELIABLE, player_move_message);
+    client.SendMessage(channel_type, player_move_message);
     client.SendPackets();
 }
 
@@ -164,17 +164,31 @@ int ClientMain( int argc, char * argv[] )
     // Allocate random buffer for the Client
     Client client( GetDefaultAllocator(), Address("0.0.0.0"), config, adapter, time );
     Address serverAddress( "127.0.0.1", ServerPort );
+    int channel_type = (int)GameChannel::RELIABLE;
 
     if ( argc == 2 )
     {
-        Address commandLineAddress( argv[1] );
-        if ( commandLineAddress.IsValid() )
-        {
-            if ( commandLineAddress.GetPort() == 0 )
-                commandLineAddress.SetPort( ServerPort );
-            serverAddress = commandLineAddress;
+        // Address commandLineAddress( argv[1] );
+        // if ( commandLineAddress.IsValid() )
+        // {
+        //     if ( commandLineAddress.GetPort() == 0 )
+        //         commandLineAddress.SetPort( ServerPort );
+        //     serverAddress = commandLineAddress;
+        // }
+
+        if (*argv[1] == 'r') {
+            channel_type = (int)GameChannel::RELIABLE;  // reliable ordered
+        } else if (*argv[1] == 'u') {
+            channel_type = (int)GameChannel::UNRELIABLE; // unreliable unordered
+        } else {
+            // default value of channel type is (int)GameChannel::RELIABLE
+            channel_type = (int)GameChannel::RELIABLE;
         }
-    }
+    } 
+
+
+
+
 
     uint8_t privateKey[KeyBytes];
     memset( privateKey, 0, KeyBytes );
@@ -240,7 +254,7 @@ int ClientMain( int argc, char * argv[] )
             printf("my new position is (%u, %u)\n", newPlayerPos.x, newPlayerPos.y);
 
             // Push action to the server
-            sendLocalPlayerMove(clientId, newPlayerPos, client);
+            sendLocalPlayerMove(clientId, newPlayerPos, client, channel_type);
         }
 
 

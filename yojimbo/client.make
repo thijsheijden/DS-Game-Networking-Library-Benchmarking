@@ -39,8 +39,8 @@ ifeq ($(config),debug_x64)
 OBJDIR = obj/x64/Debug/client
 DEFINES += -DYOJIMBO_DEBUG -DNETCODE_DEBUG -DRELIABLE_DEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -ffast-math -g -msse2 -Wall -Wextra
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -ffast-math -g -msse2 -Wall -Wextra -fno-rtti
-ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -ffast-math -g -msse2 -Wall -Wextra -fno-rtti -std=c++20
+ALL_LDFLAGS += $(LDFLAGS) -m64
 
 else ifeq ($(config),release_x64)
 OBJDIR = obj/x64/Release/client

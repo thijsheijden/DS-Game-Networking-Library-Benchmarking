@@ -2,6 +2,13 @@
 library=$1
 echo "Running network metrics benchmark for $library"
 
+reliable_messages=""
+if [ "$2" = "reliable=true" ];
+then
+	reliable_messages="-r"
+	echo "Reliable messages turned on"
+fi;
+
 # Tracked started background processes
 pids=()
 
@@ -18,15 +25,15 @@ tshark_pid=$!
 echo "Started tshark ($tshark_pid) logging of packets to and from port 60,000"
 
 # Start the server in background process
-(./$library/server_bin > /dev/null) &
+(./$library/server_bin $reliable_messages > /dev/null) &
 pids+=($!)
 echo "Started server ($!)"
 
 # Start two clients
-(./$library/client_bin > /dev/null) &
+(./$library/client_bin $reliable_messages > /dev/null) &
 pids+=($!)
 echo "Started client 1 ($!)"
-(./$library/client_bin > /dev/null) &
+(./$library/client_bin $reliable_messages > /dev/null) &
 pids+=($!)
 echo "Started client 2 ($!)"
 

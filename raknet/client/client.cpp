@@ -144,7 +144,7 @@ void Client::handleCustomPacket(SLNet::Packet *p, u_char identifier) {
 // sendLocalPlayerMove sends the new position of the local player
 void Client::sendLocalPlayerMove(Position newPos) {
     auto *playerMoveMessage = new PlayerMoveMessage(gamestate.localPlayer.GetNetworkID(), newPos);
-    rakPeer->Send(reinterpret_cast<char*>(playerMoveMessage), sizeof(PlayerMoveMessage), HIGH_PRIORITY, RELIABLE, 0, serverAddress, false);
+    rakPeer->Send(reinterpret_cast<char*>(playerMoveMessage), sizeof(PlayerMoveMessage), HIGH_PRIORITY, reliabilityMode, 1, serverAddress, false);
 }
 
 // handlePlayerPositionUpdate handles the PLAYER_POSITION message, this can also be the local player

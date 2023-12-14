@@ -11,6 +11,7 @@ class Client
 public:
     RakPeerInterface *rakPeer;
     ClientGamestate gamestate;
+    PacketReliability reliabilityMode = UNRELIABLE;
 
     Client() = default;
     void WaitForConnectionAndApplyGameConfiguration();

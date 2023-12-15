@@ -44,6 +44,14 @@ public:
     void UpdatePlayerPositions();
 };
 
+struct GameConfig {
+    bool GUI = false;
+    uint16_t mapWidth = 100;
+    uint16_t mapHeight = 100;
+    uint8_t playerCount = 2;
+    bool reliableMessaging = false;
+};
+
 // sendPlayerSpawnAndIDToClient sends the player spawn position and network ID to a newly connected client
 void sendPlayerSpawnAndIDToClient(clientID clientIndex, ServerGameState& gameState, Server& server, int channel_type) {
     auto createdPlayer = gameState.connectedPlayers[clientIndex];
@@ -55,13 +63,13 @@ void sendPlayerSpawnAndIDToClient(clientID clientIndex, ServerGameState& gameSta
 }
 
 // CreateAndSpawnNewPlayerForClient creates a new player Network object a newly connected client
-void CreateAndSpawnNewPlayerForClient(clientID clientIndex, ServerGameState& gameState) {
+void CreateAndSpawnNewPlayerForClient(clientID clientIndex, ServerGameState& gameState, GameConfig& gameConfig) {
     bool foundPosition = false;
     Position randomPos;
     while (!foundPosition) {
         // Choose a random position
         // randomPos = Position(3, 5);
-        randomPos = Position(rand() % gameState.mapWidth, rand() % gameState.mapHeight);
+        randomPos = Position(rand() % gameConfig.mapWidth, rand() % gameConfig.mapHeight);
 
         // Make sure no other player is on that position
         bool positionAlreadyOccupied = false;
@@ -127,12 +135,12 @@ void ServerGameState::UpdatePlayerPositions() {
 }
 
 // sendGameConfigToClient sends the game config (map size, player count etc) to a newly connected client
-void sendGameConfigToClient(clientID clientIndex, Server& server, ServerGameState& gameState, int channel_type) {
+void sendGameConfigToClient(clientID clientIndex, Server& server, ServerGameState& gameState, GameConfig& gameConfig, int channel_type) {
     printf("send game config to client %d\n", clientIndex);
 
     GameConfigMessage* config_message = (GameConfigMessage*)server.CreateMessage(clientIndex, (int)TestMessageType::GAME_CONFIG_MESSAGE);
-    config_message->mapHeight = gameState.mapHeight;
-    config_message->mapWidth = gameState.mapWidth;
+    config_message->mapHeight = gameConfig.mapHeight;
+    config_message->mapWidth = gameConfig.mapWidth;
     config_message->numPlayers = gameState.numPlayers;
     server.SendMessage(clientIndex, channel_type, config_message);
 }
@@ -148,6 +156,31 @@ void broadcastUpdatedPlayerPosition(clientID updatedPlayerId, Server& server, Se
             position_message->playerID = updatedPlayerId;
             server.SendMessage(i, channel_type, position_message);
         }
+    }
+}
+
+// parseCommandLineArguments parses the given command line arguments into a Config instance
+void parseCommandLineArguments(int argc, char *argv[], GameConfig* config) {
+    for(;;) {
+        switch(getopt(argc, argv, "grw:h:")) // note the colon (:) to indicate that 'b' has a parameter and is not a switch
+        {
+            case 'g':
+                config->GUI = true;
+                continue;
+            case 'r':
+                // I use int channel_type declared in the ServerMain function in the remainder of the code
+                config->reliableMessaging = true;
+                continue;
+            case 'w':
+                config->mapWidth = atoi(optarg);
+                continue;
+            case 'h':
+                config->mapHeight = atoi(optarg);
+                continue;
+            case -1:
+                break;
+        }
+        break;
     }
 }
 
@@ -175,13 +208,27 @@ void ProcessMessage(clientID clientIndex, yojimbo::Message* message, ServerGameS
     }
 }
 
-int ServerMain()
+int ServerMain(int argc, char * argv[])
 {
     printf( "started server on port %d (insecure)\n", ServerPort );
     double time = 100.0;
 
+
     // config must be same for client and server so that they both know the channel types
     GameConnectionConfig config;
+    ServerGameState gameState;
+    GameConfig gameConfig;
+    parseCommandLineArguments(argc, argv, &gameConfig);
+    int channel_type;
+    gameConfig.reliableMessaging ? channel_type = (int)GameChannel::RELIABLE : (int)GameChannel::UNRELIABLE;
+    if (gameConfig.reliableMessaging) {
+        printf("running server with reliable ordered messaging\n");
+    } else {
+        printf("running server with unreliable unordered messaging\n");
+    }
+    printf("map height: %d, map width: %d\n", gameConfig.mapHeight, gameConfig.mapWidth);
+
+
 
     uint8_t privateKey[KeyBytes];
     memset( privateKey, 0, KeyBytes );
@@ -199,15 +246,6 @@ int ServerMain()
 
     signal( SIGINT, interrupt_handler );    
 
-    // HERE you can initialize game state
-    ServerGameState gameState;
-
-    gameState.mapHeight = 20;
-    gameState.mapWidth  = 20;
-
-    // default
-    int channel_type = (int)GameChannel::RELIABLE;
-
     while ( !quit )
     {
         server.SendPackets();
@@ -218,8 +256,8 @@ int ServerMain()
         for (clientID i = 0; i < MAX_CLIENTS; i++) {
             if (server.IsClientConnected(i)) {
                 if (gameState.connectedPlayers.find(i) == gameState.connectedPlayers.end()) {
-                    sendGameConfigToClient(i, server, gameState, channel_type);
-                    CreateAndSpawnNewPlayerForClient(i, gameState);
+                    sendGameConfigToClient(i, server, gameState, gameConfig, channel_type);
+                    CreateAndSpawnNewPlayerForClient(i, gameState, gameConfig);
                     sendPlayerSpawnAndIDToClient(i, gameState, server, channel_type);
                     broadcastNewPlayerJoinedMessage(i, gameState, server, channel_type);
                 }
@@ -272,7 +310,7 @@ int ServerMain()
     return 0;
 }
 
-int main()
+int main(int argc, char * argv[] )
 {
     printf( "\n" );
 
@@ -286,7 +324,7 @@ int main()
 
     srand( (unsigned int) time( NULL ) );
 
-    int result = ServerMain();
+    int result = ServerMain(argc, argv);
 
     ShutdownYojimbo();
 

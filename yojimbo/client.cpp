@@ -199,11 +199,10 @@ int ClientMain( int argc, char * argv[] )
 
 
     struct ClientGameState gameState;
-    int channel_type;
     GameConfig gameConfig;
     parseCommandLineArguments(argc, argv, &gameConfig);
-    // the rest of config is ignored for now. Client receives mapHeight and mapWidth from server.
-    gameConfig.reliableMessaging ? channel_type = (int)GameChannel::RELIABLE : (int)GameChannel::UNRELIABLE;
+    ChannelType channel_type;
+    gameConfig.reliableMessaging ? channel_type = CHANNEL_TYPE_RELIABLE_ORDERED : channel_type = CHANNEL_TYPE_UNRELIABLE_UNORDERED;
     if (gameConfig.reliableMessaging) {
         printf("running client with reliable ordered messaging\n");
     } else {
@@ -231,7 +230,6 @@ int ClientMain( int argc, char * argv[] )
     // We don not accept any other message before we receive game config
     bool configReceived = false;
     bool playerSpawnAndIdReceived = false;
-    bool first = true;
 
     while ( !quit )
     {        

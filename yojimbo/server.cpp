@@ -220,16 +220,15 @@ int ServerMain(int argc, char * argv[])
     ServerGameState gameState;
     GameConfig gameConfig;
     parseCommandLineArguments(argc, argv, &gameConfig);
-    int channel_type;
-    gameConfig.reliableMessaging ? channel_type = (int)GameChannel::RELIABLE : (int)GameChannel::UNRELIABLE;
+    ChannelType channel_type;
+    gameConfig.reliableMessaging ? channel_type = CHANNEL_TYPE_RELIABLE_ORDERED : channel_type = CHANNEL_TYPE_UNRELIABLE_UNORDERED;
+    printf("%d\n", channel_type);
     if (gameConfig.reliableMessaging) {
         printf("running server with reliable ordered messaging\n");
     } else {
         printf("running server with unreliable unordered messaging\n");
     }
     printf("map height: %d, map width: %d\n", gameConfig.mapHeight, gameConfig.mapWidth);
-
-
 
     uint8_t privateKey[KeyBytes];
     memset( privateKey, 0, KeyBytes );

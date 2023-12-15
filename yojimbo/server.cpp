@@ -29,7 +29,8 @@
 // #include "server_gamestate.h"
 #include <vector>
 #include <cstdlib> 
-#include <ctime> 
+#include <ctime>
+#include <unistd.h>
 
 using namespace yojimbo;
 const int MAX_CLIENTS = 64;

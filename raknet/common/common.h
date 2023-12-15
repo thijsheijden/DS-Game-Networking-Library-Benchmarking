@@ -7,8 +7,6 @@
 #define GAME_PORT 60000
 #define SERVER_IP "127.0.0.1"
 
-using namespace std;
-
 struct Config {
     bool GUI = false;
     uint16_t mapWidth = 100;

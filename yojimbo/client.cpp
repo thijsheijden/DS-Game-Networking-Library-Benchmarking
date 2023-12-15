@@ -31,6 +31,7 @@
 #include <signal.h>
 #include "shared.h"
 #include <vector>
+#include <unistd.h>
 
 using namespace yojimbo;
 

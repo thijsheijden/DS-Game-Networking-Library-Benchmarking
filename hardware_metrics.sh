@@ -28,7 +28,7 @@ DURATION=$3
 RELIABLE_MESSAGES=""
 if [ "$4" = "reliable=true" ];
 then
-	RELIABLE_MESSAGES="-R"
+	RELIABLE_MESSAGES="-r"
 	echo "Reliable messages turned on"
 fi;
 
@@ -38,16 +38,15 @@ source build.sh
 cd ..
 
 # start the server
-
-(open -a Terminal ./$LIBRARY/server_bin $RELIABLE_MESSAGES > /dev/null)  &
+(./$LIBRARY/server_bin -c $NUM_CLIENTS $RELIABLE_MESSAGES > /dev/null)  &
 
 # start the clients
 for ((i=1; i<=$NUM_CLIENTS; i++)); do
-    (open -a Terminal ./$LIBRARY/client_bin $RELIABLE_MESSAGES > /dev/null)  &
+    (./$LIBRARY/client_bin $RELIABLE_MESSAGES > /dev/null)  &
 done
 
 # wait for processes to start
-sleep 10
+sleep 1
 
 # create array of process ids for server and clients
 PIDS=($(pgrep -f "client_bin"))
@@ -61,16 +60,16 @@ for PID in ${PIDS[@]}; do
     else
       OUTPUT_FILE="$OUTPUT_DIR/${LIBRARY}_${PID}_client_usage_log.csv"
     fi
-    echo "Timestamp,CPU(%),RAM(%)" > "$OUTPUT_FILE"
+    echo "Timestamp,CPU(%),RSS (KB)" > "$OUTPUT_FILE"
     echo "Process is running with PID: $PID"
     while kill -0 "$PID" > /dev/null 2>&1; do
         CURRENT_TIME=$(date "+%Y-%m-%d %H:%M:%S")
-        STATS=$(ps -p "$PID" -o %cpu,%mem | tail -n 1)
+        STATS=$(ps -p "$PID" -o %cpu,rss | tail -n 1)
         CPU_USAGE=$(echo "$STATS" | awk '{print $1}')
         RAM_USAGE=$(echo "$STATS" | awk '{print $2}')
         # Append data to the CSV file
         echo "$CURRENT_TIME,$STATS" >> "$OUTPUT_FILE"
-        sleep 1
+	sleep 0.05 # Sleep for 1 tick (@20hz)
     done &
 done
 

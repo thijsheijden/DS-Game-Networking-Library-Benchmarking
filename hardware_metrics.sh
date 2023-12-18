@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Input data: 
+# $1 = game networking library
+# $2 = number of clients
+# $3 = how long metrics need to be monitored and generated
+
 # Output directory
 OUTPUT_DIR="usage_logs"
 

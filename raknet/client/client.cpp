@@ -3,6 +3,7 @@
 #include "slikenet/peerinterface.h"
 #include "../common/raknet_helpers.h"
 #include "chrono"
+#include "thread"
 
 using namespace SLNet;
 using namespace std;
@@ -81,24 +82,6 @@ void Client::StartGameloop(bool display) {
 
     // Main game loop
     while (true) {
-        // Before the tick, go through received messages and queue updates to be performed
-        while (steady_clock::now() < next) {
-            receivedPacket = rakPeer->Receive();
-            while (receivedPacket) {
-                receivedPacketIdentifier = GetPacketIdentifier(receivedPacket);
-                if (receivedPacketIdentifier >= ID_USER_PACKET_ENUM) {
-                    // Custom packet
-                    handleCustomPacket(receivedPacket, receivedPacketIdentifier);
-                } else {
-                    // Library packet
-                    handleLibraryPacket(receivedPacket, receivedPacketIdentifier);
-                }
-
-                rakPeer->DeallocatePacket(receivedPacket);
-                receivedPacket = rakPeer->Receive();
-            }
-        }
-
         // Choose action to perform locally and perform the action
         auto newPlayerPos = gamestate.PerformLocalMove();
         printf("new player position is (%u, %u)\n", newPlayerPos.x, newPlayerPos.y);
@@ -107,9 +90,26 @@ void Client::StartGameloop(bool display) {
         sendLocalPlayerMove(newPlayerPos);
 
         // Display
-        gamestate.Display();
+        // gamestate.Display();
+
+        // Process server updates
+        receivedPacket = rakPeer->Receive();
+        while (receivedPacket) {
+            receivedPacketIdentifier = GetPacketIdentifier(receivedPacket);
+            if (receivedPacketIdentifier >= ID_USER_PACKET_ENUM) {
+                // Custom packet
+                handleCustomPacket(receivedPacket, receivedPacketIdentifier);
+            } else {
+                // Library packet
+                handleLibraryPacket(receivedPacket, receivedPacketIdentifier);
+            }
+
+            rakPeer->DeallocatePacket(receivedPacket);
+            receivedPacket = rakPeer->Receive();
+        }
 
         // Set next time tick should occur and clear the action queue
+        std::this_thread::sleep_until(next);
         next += Framerate{1};
     }
 }

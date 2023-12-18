@@ -4,6 +4,7 @@
 # $1 = game networking library
 # $2 = number of clients
 # $3 = how long metrics need to be monitored and generated
+# $4 = turn on reliable messages, don't provide any input to keep it turned off
 
 # Output directory
 OUTPUT_DIR="usage_logs"
@@ -23,17 +24,26 @@ NUM_CLIENTS=$2
 # set duration for metrics logging
 DURATION=$3
 
+# Turn on reliable messages, just leave it blank or write 'reliable=true'
+RELIABLE_MESSAGES=""
+if [ "$4" = "reliable=true" ];
+then
+	RELIABLE_MESSAGES="-R"
+	echo "Reliable messages turned on"
+fi;
+
 # Build the binaries
 cd $LIBRARY
 source build.sh
 cd ..
 
 # start the server
-(open -a Terminal ./$LIBRARY/server_bin $reliable_messages > /dev/null)  &
+
+(open -a Terminal ./$LIBRARY/server_bin $RELIABLE_MESSAGES > /dev/null)  &
 
 # start the clients
 for ((i=1; i<=$NUM_CLIENTS; i++)); do
-    (open -a Terminal ./$LIBRARY/client_bin $reliable_messages > /dev/null)  &
+    (open -a Terminal ./$LIBRARY/client_bin $RELIABLE_MESSAGES > /dev/null)  &
 done
 
 # wait for processes to start

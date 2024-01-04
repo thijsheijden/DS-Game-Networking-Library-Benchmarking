@@ -1,6 +1,5 @@
 #include <iostream>
 #include "enet/enet.h"
-#include "common.h"
 #include <unordered_map>
 #include <thread>
 #include <future>
@@ -9,6 +8,7 @@
 #pragma comment(lib, "winmm.lib")
 #define MAX_POSITION_CORRECTION  2
 #define BENCHMARK 
+#include "common.h"
 
 struct ClientData {
 	uint32_t id;
@@ -25,7 +25,7 @@ namespace Packet
 }
 PositionUpdateMessage deserialize_struct(auto buffer)
 {
-	PositionUpdateMessage result;
+	PositionUpdateMessage result; 
 	memcpy(&result, buffer, sizeof(PositionUpdateMessage));
 	return result;
 }
@@ -42,6 +42,18 @@ void introduceLatency(auto& event, auto& prevPos, auto& pos)
 }
 int main(int argc, char** argv)
 {
+	Config* config = new Config();
+	Parse parse;
+	//parse.parseCommandLineArguments(argc, argv, config);
+	//std::cout << config->reliableMessaging;
+	//config->reliableMessaging = true;
+	int channel = 1 /*= config->reliableMessaging ? 0 : 1*/;
+	for (int i = 1; i < argc; ++i) {
+		if (std::strcmp(argv[i], "-r") == 0) {
+			channel = 0;
+		}
+	}
+
 	if (enet_initialize() != 0)
 	{
 		fprintf(stderr, "An error occurred while initializing ENet.\n");
@@ -52,6 +64,7 @@ int main(int argc, char** argv)
 	ENetHost* server;
 	ENetEvent event;
 	int fixCount = -1;
+	int loss = 0;
 
 	address.host = ENET_HOST_ANY;
 	address.port = 60000;
@@ -78,7 +91,7 @@ int main(int argc, char** argv)
 #pragma region game_loop
 	while (true)
 	{
-		while (enet_host_service(server, &event, 100) > 0)
+		while (enet_host_service(server, &event, 50) > 0)
 		{
 			auto now = std::chrono::high_resolution_clock::now();
 			if (now - startTime >= simulationDuration)
@@ -94,9 +107,10 @@ int main(int argc, char** argv)
 				PositionUpdateMessage pos(0, 0, event.peer->incomingPeerID);
 				NewPlayerJoinMessage newPlayer(pos);
 				uint8_t buffer[sizeof(NewPlayerJoinMessage)];
-				memcpy(buffer, &pos, sizeof(NewPlayerJoinMessage));
+				memcpy(buffer, &newPlayer, sizeof(NewPlayerJoinMessage));
 				packet = enet_packet_create(buffer, sizeof(NewPlayerJoinMessage), ENET_PACKET_FLAG_RELIABLE);
-				enet_host_broadcast(server, 0, packet);
+			
+				enet_host_broadcast(server, channel, packet);
 				break;
 			}
 			case ENET_EVENT_TYPE_RECEIVE:
@@ -122,6 +136,11 @@ int main(int argc, char** argv)
 					{
 						static bool tOnce = 1;
 						static bool tLatencyAdded = false;
+						if (std::abs(pos.x - prevPos.x) > MAX_POSITION_CORRECTION || std::abs(pos.y - prevPos.y) > MAX_POSITION_CORRECTION)
+						{
+							printf("Client %d Correction: %d", event.peer->incomingPeerID, loss);
+							loss++;
+						}
 						if (tOnce)
 						{
 							printf("id 2 port: %d", event.peer->address.port);
@@ -136,16 +155,23 @@ int main(int argc, char** argv)
 									b. polls data until destination reached and all data processed consecutively when reached
 							the correctness mechanism should have worked at the moment when position updated more than once for same client consecutively.
 						*/
+						
 						if (count >= 1)
 						{
 							fixCount++;
 							tLatencyAdded = true;
+							std::printf("Client %d polled %d times.\n", event.peer->incomingPeerID, count);
+						}
+						else
+						{
+							prevPos = pos;
 						}
 						if (tLatencyAdded)
 						{
 							clientMessageCount++;
 						}
-						std::printf("count %d", count++);
+						count++;
+
 					}
 					else
 					{
@@ -158,7 +184,7 @@ int main(int argc, char** argv)
 					for (size_t i = 0; i < server->peerCount; ++i) {
 						peer = &server->peers[i];
 						if (peer != sender) {
-							enet_peer_send(peer, 0, packet);
+							enet_peer_send(peer, channel, packet);
 						}
 					}
 					break;
@@ -185,7 +211,7 @@ int main(int argc, char** argv)
 	}
 #pragma endregion game_loop
 	std::ofstream file("fix.txt");
-	file << fixCount << " out of total" << clientMessageCount;
+	file << fixCount << " out of total" << clientMessageCount << "total loss during latency:" << loss;
 	file.close();
 	enet_host_destroy(server);
 	return EXIT_SUCCESS;

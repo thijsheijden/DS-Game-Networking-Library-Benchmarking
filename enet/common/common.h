@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 #include <sstream>
+//#include <cstdint>
+//#include "getopt.h"
 //Basic events of the game
 enum class Event
 {
@@ -18,7 +20,21 @@ enum class PossibleMovements : uint8_t {
     PLAYER_MOVE_LEFT,
     PLAYER_MOVE_RIGHT
 };
+#pragma once
 
+struct Config {
+    bool GUI = false;
+    uint16_t mapWidth = 100;
+    uint16_t mapHeight = 100;
+    uint8_t playerCount = 2;
+    bool reliableMessaging = false;
+};
+
+
+struct Parse {
+     char* optarg= NULL;
+     int optind = 1;
+};
 
 //Update player position
 #pragma pack(push,1)

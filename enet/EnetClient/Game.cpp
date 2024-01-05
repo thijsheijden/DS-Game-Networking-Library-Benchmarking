@@ -6,13 +6,13 @@ using namespace std::chrono;
 #pragma region Packeting
 namespace Packet
 {
-	decltype(auto) send_packet = [](ENetPeer* peer, const auto& data)
+	decltype(auto) send_packet = [](ENetPeer* peer, const auto& data, auto channel)
 	{
 		ENetPacket* packet = nullptr;
 		//packet = create_string_packet(data);
 		packet = enet_packet_create(data, sizeof(PositionUpdateMessage), ENET_PACKET_FLAG_RELIABLE);
 
-		enet_peer_send(peer, 0, packet);
+		enet_peer_send(peer, channel, packet);
 	};
 }
 #pragma endregion Packeting
@@ -22,12 +22,13 @@ PositionUpdateMessage deserialize_struct(const auto buffer)
 	memcpy(&result, buffer, sizeof(PositionUpdateMessage));
 	return result;
 }
-Game::Game(int width, int height)
+Game::Game(int width, int height, bool reliableMessage)
 {
 	mapHeight = height;
 	mapWidth = width;
 	m_client->pos.x = 1;
 	m_client->pos.y = 1;
+	channel = reliableMessage ? 0 : 1;
 	m_client->formConnection();
 }
 
@@ -49,7 +50,7 @@ void Game::startGameLoop() {
 void Game::moveLocalPlayer(PositionUpdateMessage newPos)
 {
 	m_client->pos = newPos;
-	printf("moved local player to x: %d, y: %d\n", m_client->pos.x, m_client->pos.y);
+	//printf("moved local player to x: %d, y: %d\n", m_client->pos.x, m_client->pos.y);
 }
 
 // tick performs a single game loop tick, performing the following actions:
@@ -85,23 +86,32 @@ int Game::tick()
 	m_client->pos.messageType = Event::POSITION_UPDATE;
 	uint8_t buffer[sizeof(PositionUpdateMessage)];
 	memcpy(buffer, &m_client->pos, sizeof(PositionUpdateMessage));
-	Packet::send_packet(m_client->peer, buffer);
+	Packet::send_packet(m_client->peer, buffer, channel);
 
 	auto event = m_client->event;
 	while (enet_host_service(m_client->client, &event, 0) > 0)
 	{
 		switch (event.type)
 		{
+		
 		case ENET_EVENT_TYPE_RECEIVE: {
 
 			auto data = deserialize_struct(event.packet->data);
+
 			switch ((Event)data.messageType)
 			{
 
+			case Event::PLAYER_JOIN:
+			{
+				printf("A new client connected from %x:%u.\n", event.peer->address.host, data.ownerId);
+
+				break;
+			}
 			case Event::POSITION_UPDATE:
 
 				m_others[data.ownerId] = data;
 				printf("Recieved position for %d, x: %d,y: %d\n", data.ownerId, data.x, data.y);
+
 				break;
 			}
 			break;

@@ -14,13 +14,20 @@ struct Options
 
 int main(int argc, char *argv[])
 {
+    Config* config = new Config();
+    Parse parse;
+    //parse.parseCommandLineArguments(argc, argv, config);
     Options opt;
     opt.gui = argc >= 2 ? (std::string(argv[1]) == "true") : false;
     opt.mapHeight = argc >= 3 ? std::stoi(argv[2]) : 10;
     opt.mapWidth = argc >= 4 ? std::stoi(argv[3]) : 10;
-
-    Game game(opt.mapHeight.value(), opt.mapWidth.value());
-    game.startGameLoop();
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "-r") == 0) {
+            config->reliableMessaging = 1;
+        }
+    }
+    Game game(config->mapWidth, config->mapHeight, config->reliableMessaging);
+    game.startGameLoop(); 
     return EXIT_SUCCESS;
 }
 

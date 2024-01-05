@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <system_error>
 #include <queue>
-#include "common.h"
 #include <enet/enet.h>
 #include "vector"
 #include "Client.h"
@@ -35,7 +34,7 @@ private:
 class Game
 {
 public:
-    Game(int width, int height);
+    Game(int width, int height, bool reliableMessage);
     void startGameLoop();
     void moveLocalPlayer(PositionUpdateMessage newPos);
     //GameState game_state;
@@ -47,6 +46,7 @@ private:
     int tick();
     Client* m_client = new Client();
     std::map<int, PositionUpdateMessage> m_others; 
+    size_t channel = 0;
 
 };
 

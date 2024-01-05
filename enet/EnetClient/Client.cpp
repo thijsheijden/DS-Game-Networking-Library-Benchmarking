@@ -29,7 +29,7 @@ int Client::formConnection()
             "An error occurred while trying to create an ENet client host.\n");
         exit(EXIT_FAILURE);
     }
-    peer = enet_host_connect(client, &address, 1, 0);
+    peer = enet_host_connect(client, &address, 2, 0);
 
     if (peer == NULL)
     {

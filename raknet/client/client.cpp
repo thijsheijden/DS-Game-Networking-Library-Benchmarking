@@ -3,6 +3,7 @@
 #include "slikenet/peerinterface.h"
 #include "../common/raknet_helpers.h"
 #include "chrono"
+#include "thread"
 
 using namespace SLNet;
 using namespace std;
@@ -72,7 +73,7 @@ void Client::WaitForPlayerSpawn() {
 
 // StartGameloop starts the client game loop
 void Client::StartGameloop(bool display) {
-    using Framerate = duration<steady_clock::rep, ratio<1, 5>>; // 20 ticks per second
+    using Framerate = duration<steady_clock::rep, ratio<1, 20>>; // 20 ticks per second
     auto next = steady_clock::now() + Framerate{1};
 
     // Packet pointer
@@ -81,24 +82,6 @@ void Client::StartGameloop(bool display) {
 
     // Main game loop
     while (true) {
-        // Before the tick, go through received messages and queue updates to be performed
-        while (steady_clock::now() < next) {
-            receivedPacket = rakPeer->Receive();
-            while (receivedPacket) {
-                receivedPacketIdentifier = GetPacketIdentifier(receivedPacket);
-                if (receivedPacketIdentifier >= ID_USER_PACKET_ENUM) {
-                    // Custom packet
-                    handleCustomPacket(receivedPacket, receivedPacketIdentifier);
-                } else {
-                    // Library packet
-                    handleLibraryPacket(receivedPacket, receivedPacketIdentifier);
-                }
-
-                rakPeer->DeallocatePacket(receivedPacket);
-                receivedPacket = rakPeer->Receive();
-            }
-        }
-
         // Choose action to perform locally and perform the action
         auto newPlayerPos = gamestate.PerformLocalMove();
         printf("new player position is (%u, %u)\n", newPlayerPos.x, newPlayerPos.y);
@@ -107,9 +90,26 @@ void Client::StartGameloop(bool display) {
         sendLocalPlayerMove(newPlayerPos);
 
         // Display
-        gamestate.Display();
+        // gamestate.Display();
+
+        // Process server updates
+        receivedPacket = rakPeer->Receive();
+        while (receivedPacket) {
+            receivedPacketIdentifier = GetPacketIdentifier(receivedPacket);
+            if (receivedPacketIdentifier >= ID_USER_PACKET_ENUM) {
+                // Custom packet
+                handleCustomPacket(receivedPacket, receivedPacketIdentifier);
+            } else {
+                // Library packet
+                handleLibraryPacket(receivedPacket, receivedPacketIdentifier);
+            }
+
+            rakPeer->DeallocatePacket(receivedPacket);
+            receivedPacket = rakPeer->Receive();
+        }
 
         // Set next time tick should occur and clear the action queue
+        std::this_thread::sleep_until(next);
         next += Framerate{1};
     }
 }
@@ -144,7 +144,7 @@ void Client::handleCustomPacket(SLNet::Packet *p, u_char identifier) {
 // sendLocalPlayerMove sends the new position of the local player
 void Client::sendLocalPlayerMove(Position newPos) {
     auto *playerMoveMessage = new PlayerMoveMessage(gamestate.localPlayer.GetNetworkID(), newPos);
-    rakPeer->Send(reinterpret_cast<char*>(playerMoveMessage), sizeof(PlayerMoveMessage), HIGH_PRIORITY, RELIABLE, 0, serverAddress, false);
+    rakPeer->Send(reinterpret_cast<char*>(playerMoveMessage), sizeof(PlayerMoveMessage), HIGH_PRIORITY, reliabilityMode, 1, serverAddress, false);
 }
 
 // handlePlayerPositionUpdate handles the PLAYER_POSITION message, this can also be the local player

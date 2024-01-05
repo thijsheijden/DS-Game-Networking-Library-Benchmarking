@@ -37,8 +37,8 @@
 
 using namespace yojimbo;
 
-const int ClientPort = 30000;
-const int ServerPort = 40000;
+const int ClientPort = 60000;
+const int ServerPort = 60000;
 
 using clientID = uint8_t;
 using coord = uint16_t;
@@ -87,18 +87,11 @@ public:
     }
 };
 
-// two channels, one for each type that Yojimbo supports
-enum class GameChannel {
-    RELIABLE,
-    UNRELIABLE,
-    COUNT
-};
-
-struct GameConnectionConfig : yojimbo::ClientServerConfig {
+struct GameConnectionConfig : ClientServerConfig {
     GameConnectionConfig()  {
         numChannels = 2;
-        channel[(int)GameChannel::RELIABLE].type = yojimbo::CHANNEL_TYPE_RELIABLE_ORDERED;
-        channel[(int)GameChannel::UNRELIABLE].type = yojimbo::CHANNEL_TYPE_UNRELIABLE_UNORDERED;
+        channel[0].type = CHANNEL_TYPE_RELIABLE_ORDERED;
+        channel[1].type = CHANNEL_TYPE_UNRELIABLE_UNORDERED;
     }
 };
 

@@ -4,29 +4,14 @@
 #include "client.h"
 #include "ncurses.h"
 
-// parseCommandLineArguments parses the given command line arguments into a Config instance
-Config parseCommandLineArguments(int argc, char *argv[]) {
-    Config config;
-    try
-    {
-        config = structopt::app("game_client").parse<Config>(argc, argv);
-    }
-    catch (structopt::exception &e)
-    {
-        std::cout << e.what() << "\n";
-        std::cout << e.help();
-        exit(EXIT_FAILURE);
-    }
-
-    return config;
-}
-
 using namespace SLNet;
 using namespace std;
 int main(int argc, char *argv[]) {
-    auto config = parseCommandLineArguments(argc, argv);
+    Config config;
+    parseCommandLineArguments(argc, argv, &config);
 
-    if (config.gui.value()) {
+    // If we want a simple GUI
+    if (config.GUI) {
         // Init ncurses
         initscr();
         cbreak();
@@ -37,6 +22,9 @@ int main(int argc, char *argv[]) {
 
     // Create Client instance
     auto client = Client();
+    if (config.reliableMessaging) {
+        client.reliabilityMode = RELIABLE_ORDERED;
+    }
 
     // Create RakNet peer
     client.rakPeer = RakPeerInterface::GetInstance();
@@ -57,7 +45,7 @@ int main(int argc, char *argv[]) {
     // Wait for player spawn message
     client.WaitForPlayerSpawn();
 
-    client.StartGameloop(config.gui.value());
+    client.StartGameloop(config.GUI);
 
     return 0;
 }

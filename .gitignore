@@ -1,3 +1,9 @@
+# Ignore all files (to ignore binaries without an extension)
+*
+
+# Unignore all files with an extension
+!*.*
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt
@@ -15,6 +21,7 @@ CMakeScripts/
 *.a
 *.so
 *.dylib
+*.d
 
 # Compiled Object files, Static and Dynamic libs (Windows)
 *.obj

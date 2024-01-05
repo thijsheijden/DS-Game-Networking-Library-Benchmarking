@@ -1,27 +1,9 @@
 #include "iostream"
 #include "server.h"
-#include "structopt/app.hpp"
 #include "../common/common.h"
 
 using namespace SLNet;
 using namespace std;
-
-// parseCommandLineArguments parses the given command line arguments into a Config instance
-Config parseCommandLineArguments(int argc, char *argv[]) {
-    Config config;
-    try
-    {
-        config = structopt::app("game_client").parse<Config>(argc, argv);
-    }
-    catch (structopt::exception &e)
-    {
-        std::cout << e.what() << "\n";
-        std::cout << e.help();
-        exit(EXIT_FAILURE);
-    }
-
-    return config;
-}
 
 int main(int argc, char *argv[]) {
     cout << "server starting up\n";
@@ -33,15 +15,20 @@ int main(int argc, char *argv[]) {
     auto server = Server();
 
     // Parse given command line arguments
-    auto givenConfig = parseCommandLineArguments(argc, argv);
+    Config config;
+    parseCommandLineArguments(argc, argv, &config);
+
+    if (config.reliableMessaging) {
+        server.reliabilityMode = RELIABLE_ORDERED;
+    }
 
     // Set gamestate fields
-    server.gamestate.ApplyConfig(givenConfig.mapWidth.value(), givenConfig.mapHeight.value(), givenConfig.playerCount.value());
+    server.gamestate.ApplyConfig(config.mapWidth, config.mapHeight, config.playerCount);
 
     // Create RakNet peer
     server.rakPeer = RakPeerInterface::GetInstance();
-    auto startupStatus = server.rakPeer->Startup(givenConfig.playerCount.value(), new SocketDescriptor(GAME_PORT, 0), 1);
-    server.rakPeer->SetMaximumIncomingConnections(givenConfig.playerCount.value());
+    auto startupStatus = server.rakPeer->Startup(config.playerCount, new SocketDescriptor(GAME_PORT, 0), 1);
+    server.rakPeer->SetMaximumIncomingConnections(config.playerCount);
     if (startupStatus != RAKNET_STARTED) {
         cout << "failed to start RakNet";
     }

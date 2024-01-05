@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/server_gamestate.h"
+#include "slikenet/peerinterface.h"
 
 using namespace SLNet;
 using namespace std;
@@ -9,6 +10,7 @@ class Server {
 public:
     RakPeerInterface *rakPeer;
     ServerGamestate gamestate;
+    PacketReliability reliabilityMode = UNRELIABLE;
 
     void StartGameLoop();
 

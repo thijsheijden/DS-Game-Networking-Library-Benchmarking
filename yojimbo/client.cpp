@@ -31,6 +31,7 @@
 #include <signal.h>
 #include "shared.h"
 #include <vector>
+#include <unistd.h>
 
 using namespace yojimbo;
 
@@ -50,6 +51,15 @@ public:
     void AddRemotePlayer(clientID remotePlayerID, Position pos);
     Position PerformLocalMove();
 };
+
+struct GameConfig {
+    bool GUI = false;
+    uint16_t mapWidth = 100;
+    uint16_t mapHeight = 100;
+    uint8_t playerCount = 2; // unused in yojimbo
+    bool reliableMessaging = false;
+};
+
 
 // we receive info from server that new player joined the game
 void AddRemotePlayer(clientID remotePlayerID, Position pos, ClientGameState& gameState) {
@@ -144,13 +154,38 @@ void ProcessMessage(yojimbo::Message* message, ClientGameState& gameState) {
     }
 }
 
-void sendLocalPlayerMove(clientID clientIndex, Position newPos, Client& client) {
+void sendLocalPlayerMove(clientID clientIndex, Position newPos, Client& client, int channel_type) {
     PlayerMoveMessage* player_move_message = (PlayerMoveMessage*)client.CreateMessage((int)TestMessageType::PLAYER_MOVE_MESSAGE);
     player_move_message->x = newPos.x;
     player_move_message->y = newPos.y;
     player_move_message->playerID = clientIndex;
-    client.SendMessage((int)GameChannel::RELIABLE, player_move_message);
+    client.SendMessage(channel_type, player_move_message);
     client.SendPackets();
+}
+
+// parseCommandLineArguments parses the given command line arguments into a Config instance
+void parseCommandLineArguments(int argc, char *argv[], GameConfig* gameConfig) {
+    for(;;) {
+        switch(getopt(argc, argv, "grw:h:")) // note the colon (:) to indicate that 'b' has a parameter and is not a switch
+        {
+            case 'g':
+                gameConfig->GUI = true;
+                continue;
+            case 'r':
+                // I use int channel_type declared in the ServerMain function in the remainder of the code
+                gameConfig->reliableMessaging = true;
+                continue;
+            case 'w':
+                gameConfig->mapWidth = atoi(optarg);
+                continue;
+            case 'h':
+                gameConfig->mapHeight = atoi(optarg);
+                continue;
+            case -1:
+                break;
+        }
+        break;
+    }
 }
 
 int ClientMain( int argc, char * argv[] )
@@ -161,21 +196,23 @@ int ClientMain( int argc, char * argv[] )
     random_bytes( (uint8_t*) &clientId, 8 );
     printf( "client id is %.16" PRIx64 "\n", clientId );
     GameConnectionConfig config;
+
+
+    struct ClientGameState gameState;
+    GameConfig gameConfig;
+    parseCommandLineArguments(argc, argv, &gameConfig);
+    ChannelType channel_type;
+    gameConfig.reliableMessaging ? channel_type = CHANNEL_TYPE_RELIABLE_ORDERED : channel_type = CHANNEL_TYPE_UNRELIABLE_UNORDERED;
+    if (gameConfig.reliableMessaging) {
+        printf("running client with reliable ordered messaging\n");
+    } else {
+        printf("running client with unreliable unordered messaging\n");
+    }
+
+
     // Allocate random buffer for the Client
     Client client( GetDefaultAllocator(), Address("0.0.0.0"), config, adapter, time );
     Address serverAddress( "127.0.0.1", ServerPort );
-
-    if ( argc == 2 )
-    {
-        Address commandLineAddress( argv[1] );
-        if ( commandLineAddress.IsValid() )
-        {
-            if ( commandLineAddress.GetPort() == 0 )
-                commandLineAddress.SetPort( ServerPort );
-            serverAddress = commandLineAddress;
-        }
-    }
-
     uint8_t privateKey[KeyBytes];
     memset( privateKey, 0, KeyBytes );
 
@@ -185,19 +222,14 @@ int ClientMain( int argc, char * argv[] )
     client.GetAddress().ToString( addressString, sizeof( addressString ) );
     printf( "client address is %s\n", addressString );
 
-    // How much time we wait between while iterations
-    const double deltaTime = 0.1f;
+    // How much time we wait between while iterations (tick rate of 20hz)
+    const double deltaTime = 0.05f;
 
     signal( SIGINT, interrupt_handler );
-
-    // HERE you can initialize game state
-    struct ClientGameState gameState;
 
     // We don not accept any other message before we receive game config
     bool configReceived = false;
     bool playerSpawnAndIdReceived = false;
-    bool first = true;
-    int count = 0;
 
     while ( !quit )
     {        
@@ -240,7 +272,7 @@ int ClientMain( int argc, char * argv[] )
             printf("my new position is (%u, %u)\n", newPlayerPos.x, newPlayerPos.y);
 
             // Push action to the server
-            sendLocalPlayerMove(clientId, newPlayerPos, client);
+            sendLocalPlayerMove(clientId, newPlayerPos, client, channel_type);
         }
 
 

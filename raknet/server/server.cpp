@@ -40,7 +40,7 @@ void Server::StartGameLoop() {
         // Broadcast updated player positions
         for (auto player: gamestate.connectedPlayers) {
             auto *playerPositionMessage = new PlayerPositionMessage(player.second->GetNetworkID(), player.second->pos);
-            rakPeer->Send(reinterpret_cast<char*>(playerPositionMessage), sizeof(PlayerPositionMessage), HIGH_PRIORITY, reliabilityMode, 1, UNASSIGNED_SYSTEM_ADDRESS, true);
+            rakPeer->Send(reinterpret_cast<char*>(playerPositionMessage), sizeof(PlayerPositionMessage), HIGH_PRIORITY, reliabilityMode, 2, UNASSIGNED_SYSTEM_ADDRESS, true);
         }
 
         // Set next time tick should occur

@@ -25,6 +25,7 @@ void parseCommandLineArguments(int argc, char *argv[], Config* config) {
                 continue;
             case 'r':
                 config->reliableMessaging = true;
+                printf("Reliable messages turned on!\n");
                 continue;
             case 'w':
                 config->mapWidth = atoi(optarg);

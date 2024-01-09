@@ -1,9 +1,14 @@
-# Library argument
+# Arguments:
+# $1 Library to benchmark
+# $2 Number of clients
+# $3 Test duration
+# $4 Reliable messaging ("true" turns on reliable messaging)
+
 library=$1
 echo "Running network metrics benchmark for $library"
 
 reliable_messages=""
-if [ "$2" = "reliable=true" ];
+if [ "$4" = "true" ];
 then
 	reliable_messages="-r"
 	echo "Reliable messages turned on"
@@ -25,20 +30,19 @@ tshark_pid=$!
 echo "Started tshark ($tshark_pid) logging of packets to and from port 60,000"
 
 # Start the server in background process
-(./$library/server_bin $reliable_messages > /dev/null) &
+(./$library/server_bin $reliable_messages -c $2 > /dev/null) &
 pids+=($!)
 echo "Started server ($!)"
 
-# Start two clients
-(./$library/client_bin $reliable_messages > /dev/null) &
-pids+=($!)
-echo "Started client 1 ($!)"
-(./$library/client_bin $reliable_messages > /dev/null) &
-pids+=($!)
-echo "Started client 2 ($!)"
+# Start the clients
+ for ((i=1; i<=$2; i++)); do
+    (./$library/client_bin $reliable_messages > /dev/null)  &
+    pids+=($!)
+    echo "Started client ($!)"
+done
 
 # Run simulation for 60 seconds
-sleep 60
+sleep $3
 
 # Gracefully kill tshark
 kill $tshark_pid

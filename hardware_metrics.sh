@@ -4,10 +4,11 @@
 # $1 = game networking library
 # $2 = number of clients
 # $3 = how long metrics need to be monitored and generated
-# $4 = turn on reliable messages, don't provide any input to keep it turned off
+# $4 = output directory
+# $5 = turn on reliable messages, don't provide any input to keep it turned off
 
 # Output directory
-OUTPUT_DIR="usage_logs"
+OUTPUT_DIR=$4
 
 # Create the output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
@@ -26,7 +27,7 @@ DURATION=$3
 
 # Turn on reliable messages, just leave it blank or write 'reliable=true'
 RELIABLE_MESSAGES=""
-if [ "$4" = "reliable=true" ];
+if [ "$5" = "reliable=true" ];
 then
 	RELIABLE_MESSAGES="-r"
 	echo "Reliable messages turned on"
@@ -60,16 +61,15 @@ for PID in ${PIDS[@]}; do
     else
       OUTPUT_FILE="$OUTPUT_DIR/${LIBRARY}_${PID}_client_usage_log.csv"
     fi
-    echo "Timestamp,CPU(%),RSS (KB)" > "$OUTPUT_FILE"
+    echo "CPU TIME,RSS (KB)" > "$OUTPUT_FILE"
     echo "Process is running with PID: $PID"
     while kill -0 "$PID" > /dev/null 2>&1; do
-        CURRENT_TIME=$(date "+%Y-%m-%d %H:%M:%S")
-        STATS=$(ps -p "$PID" -o %cpu,rss | tail -n 1)
-        CPU_USAGE=$(echo "$STATS" | awk '{print $1}')
+        STATS=$(ps -p "$PID" -o time,rss | tail -n 1)
+        CPU_USAGE=$(echo "$STATS" | awk -F'[: ]+' '/:/ {t=$3+60*($2+60*$1); print t}')
         RAM_USAGE=$(echo "$STATS" | awk '{print $2}')
         # Append data to the CSV file
-        echo "$CURRENT_TIME,$STATS" >> "$OUTPUT_FILE"
-	sleep 0.05 # Sleep for 1 tick (@20hz)
+	echo "$CPU_USAGE,$RAM_USAGE" >> "$OUTPUT_FILE"
+	sleep 0.005 # Measure 10x per tick
     done &
 done
 

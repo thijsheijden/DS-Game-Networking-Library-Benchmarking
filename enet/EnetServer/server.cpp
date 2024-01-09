@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 	address.host = ENET_HOST_ANY;
 	address.port = 60000;
 
-	server = enet_host_create(&address, 32, 2,
+	server = enet_host_create(&address, 64, 2,
 		0      /* assume any amount of incoming bandwidth */,
 		0      /* assume any amount of outgoing bandwidth */);
 

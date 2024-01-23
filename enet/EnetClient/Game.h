@@ -51,6 +51,8 @@ private:
     size_t channel = 0;
     std::ofstream thirdExperiment;
     bool correctionCheck;
+    int totalCorrectionCount=0;
+
 
 };
 

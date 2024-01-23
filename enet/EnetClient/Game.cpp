@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "chrono"
 #include "thread"
+#include <filesystem>
 using namespace std::chrono;
 #define MAX_POSITION_CORRECTION 2
 #pragma region Packeting
@@ -35,20 +36,54 @@ Game::Game(int width, int height, bool reliableMessage, bool correction)
 void Game::startGameLoop() {
 	using Framerate = duration<steady_clock::rep, std::ratio<1, 20>>; // 20 ticks per second
 	auto next = steady_clock::now() + Framerate{ 1 };
-	// 
+	std::filesystem::path currentPath = std::filesystem::current_path();
+
+	// Specify the subdirectory name
+	std::string subdirectoryName = "enet_third_experiment";
+
+	// Combine the current path with the subdirectory name
+	std::filesystem::path directoryPath = currentPath / subdirectoryName;
+
+	// Check if the directory already exists
+	if (!std::filesystem::exists(directoryPath)) {
+		if (std::filesystem::create_directory(directoryPath)) {
+			std::cout << "Directory created successfully: " << directoryPath << std::endl;
+		}
+		else {
+			std::cerr << "Error creating directory: " << directoryPath << std::endl;
+		}
+	}
+	else {
+		std::cout << "Directory already exists: " << directoryPath << std::endl;
+	}
+
+	
+	auto currentTime = std::chrono::system_clock::now();
+	auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime.time_since_epoch()).count();
+
 	//Total number of corrections made since start(cumulative value)
 	//The number of ticks the client has not received any updates from the server
 	// (this is incremented every tick the client receives no updates from the server, 
 	// and reset back to 0 in the tick the client does receive a server update), this is interesting as it shows how stale the game is
-	thirdExperiment.open("ThirdExperimentEnet.csv");
-	thirdExperiment << " Corrections In Each Tick, No Updates,  Total Corrections,\n ";
+	
+	static int fileCount = 0;
+	static std::string fileName = "ThirdExperimentEnetClient" + std::to_string(timestamp) + ".csv";
+	std::filesystem::path filePath = directoryPath / fileName;
+	thirdExperiment.open(filePath);
+	if (thirdExperiment) {
+		thirdExperiment << " Corrections In Each Tick, No Updates,  Total Corrections,\n ";
+	}
+	
+	
 	while (true)
 	{
 		tick();
 		// Sleep until next tick
 		std::this_thread::sleep_until(next);
 		next += Framerate{ 1 };
+	
 	}
+	
 	enet_peer_disconnect(m_client->peer, 0);
 
 }
@@ -95,14 +130,13 @@ int Game::tick()
 	memcpy(buffer, &m_client->pos, sizeof(PositionUpdateMessage));
 	Packet::send_packet(m_client->peer, buffer, channel);
 	static int correctionCountInTick;
-	static int totalCorrectionCount;
-	static int noUpdates;
-	static bool isUpdated =0;
+	static int noUpdates = 0;
+	static bool isUpdated = false;
 	auto event = m_client->event;
-	auto dummy = ", ";
+	auto dummy = ",";
 	while (enet_host_service(m_client->client, &event, 0) > 0)
 	{
-		isUpdated = 0;
+		isUpdated = false;
 		switch (event.type)
 		{
 		
@@ -122,19 +156,24 @@ int Game::tick()
 			case Event::POSITION_UPDATE:
 
 				m_others[data.ownerId] = data;
-				static auto prevX = data.x;
-				static auto prevY = data.y;
+				static int prevX;
+				static int prevY;
+				static bool isTarget = data.ownerId == 0;
 				//printf("Recieved position for %d, x: %d,y: %d\n", data.ownerId, data.x, data.y);
 				//Number of corrections made based on server updates in the tick(position changes of more than 1 space in any direction)
-				if (correctionCheck) {
-					if (std::abs(prevX - data.x) > MAX_POSITION_CORRECTION || std::abs(data.y - prevY) > MAX_POSITION_CORRECTION)
+				if (correctionCheck)
+				{
+					isUpdated = true;
+					
+					if (isTarget && (std::abs(prevX - data.x) > MAX_POSITION_CORRECTION || std::abs(data.y - prevY) >= MAX_POSITION_CORRECTION))
 					{
 						correctionCountInTick++;
 						totalCorrectionCount++;
-						isUpdated = 1;
+						
 					}
+					prevX = data.x;
+					prevY = data.y;
 				}
-				break;
 			}
 			break;
 		}
@@ -150,20 +189,15 @@ int Game::tick()
 		{
 			if (!isUpdated)
 				noUpdates++;
-			auto result = std::to_string(correctionCountInTick) + dummy + std::to_string(noUpdates) + dummy;
-			thirdExperiment << result;
-			correctionCountInTick = 0;
+			auto result = std::to_string(correctionCountInTick) + dummy + std::to_string(noUpdates) + dummy+  std::to_string(totalCorrectionCount);
+			thirdExperiment << result << std::endl;
 		}
 	}
-	if (correctionCheck) 
+	if (correctionCheck)
 	{
-		thirdExperiment << " , " << totalCorrectionCount;
+		correctionCountInTick = 0;
+		//noUpdates = 0;
 	}
-
 	return 0;
 }
-//TODO: Implement if neccessary
-//void Gamestate::updateGameState(std::vector<Client> pClients, std::vector<Bomb>)
-//{
-//	otherPlayers = pClients;
-//}
+

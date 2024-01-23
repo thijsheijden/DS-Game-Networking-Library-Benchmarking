@@ -7,7 +7,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "winmm.lib")
 #define MAX_POSITION_CORRECTION  2
-#define BENCHMARK
+//#define BENCHMARK 
 #include "common.h"
 struct ClientData {
 	uint32_t id;
@@ -187,10 +187,10 @@ int main(int argc, char** argv)
 			}
 		}
 		auto now = std::chrono::high_resolution_clock::now();
-		if (now - startTime >= simulationDuration)
+	/*	if (now - startTime >= simulationDuration)
 		{
 			break;
-		}
+		}*/
 	}
 #pragma endregion game_loop
 	std::ofstream file("fix.txt");

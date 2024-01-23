@@ -28,6 +28,7 @@ struct Config {
     uint16_t mapHeight = 100;
     uint8_t playerCount = 2;
     bool reliableMessaging = false;
+    bool correction = true;
 };
 
 

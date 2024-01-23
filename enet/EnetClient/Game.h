@@ -6,6 +6,8 @@
 #include "vector"
 #include "Client.h"
 #include <map>
+#include <fstream>
+
 #ifndef CLIENT_GAME_H
 #define CLIENT_GAME_H
 
@@ -34,7 +36,7 @@ private:
 class Game
 {
 public:
-    Game(int width, int height, bool reliableMessage);
+    Game(int width, int height, bool reliableMessage, bool correction);
     void startGameLoop();
     void moveLocalPlayer(PositionUpdateMessage newPos);
     //GameState game_state;
@@ -47,6 +49,8 @@ private:
     Client* m_client = new Client();
     std::map<int, PositionUpdateMessage> m_others; 
     size_t channel = 0;
+    std::ofstream thirdExperiment;
+    bool correctionCheck;
 
 };
 

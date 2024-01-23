@@ -2,7 +2,7 @@
 #include "chrono"
 #include "thread"
 using namespace std::chrono;
-
+#define MAX_POSITION_CORRECTION 2
 #pragma region Packeting
 namespace Packet
 {
@@ -22,7 +22,7 @@ PositionUpdateMessage deserialize_struct(const auto buffer)
 	memcpy(&result, buffer, sizeof(PositionUpdateMessage));
 	return result;
 }
-Game::Game(int width, int height, bool reliableMessage)
+Game::Game(int width, int height, bool reliableMessage, bool correction)
 {
 	mapHeight = height;
 	mapWidth = width;
@@ -35,7 +35,13 @@ Game::Game(int width, int height, bool reliableMessage)
 void Game::startGameLoop() {
 	using Framerate = duration<steady_clock::rep, std::ratio<1, 20>>; // 20 ticks per second
 	auto next = steady_clock::now() + Framerate{ 1 };
-
+	// 
+	//Total number of corrections made since start(cumulative value)
+	//The number of ticks the client has not received any updates from the server
+	// (this is incremented every tick the client receives no updates from the server, 
+	// and reset back to 0 in the tick the client does receive a server update), this is interesting as it shows how stale the game is
+	thirdExperiment.open("ThirdExperimentEnet.csv");
+	thirdExperiment << " Corrections In Each Tick, No Updates,  Total Corrections,\n ";
 	while (true)
 	{
 		tick();
@@ -61,6 +67,7 @@ void Game::moveLocalPlayer(PositionUpdateMessage newPos)
 // returns non-zero if an error has occurred
 int Game::tick()
 {
+	
 	std::vector<std::pair<PossibleMovements, PositionUpdateMessage>> possibleActions;
 
 	PositionUpdateMessage playerPos = m_client->pos;
@@ -87,10 +94,15 @@ int Game::tick()
 	uint8_t buffer[sizeof(PositionUpdateMessage)];
 	memcpy(buffer, &m_client->pos, sizeof(PositionUpdateMessage));
 	Packet::send_packet(m_client->peer, buffer, channel);
-
+	static int correctionCountInTick;
+	static int totalCorrectionCount;
+	static int noUpdates;
+	static bool isUpdated =0;
 	auto event = m_client->event;
+	auto dummy = ", ";
 	while (enet_host_service(m_client->client, &event, 0) > 0)
 	{
+		isUpdated = 0;
 		switch (event.type)
 		{
 		
@@ -110,8 +122,18 @@ int Game::tick()
 			case Event::POSITION_UPDATE:
 
 				m_others[data.ownerId] = data;
-				printf("Recieved position for %d, x: %d,y: %d\n", data.ownerId, data.x, data.y);
-
+				static auto prevX = data.x;
+				static auto prevY = data.y;
+				//printf("Recieved position for %d, x: %d,y: %d\n", data.ownerId, data.x, data.y);
+				//Number of corrections made based on server updates in the tick(position changes of more than 1 space in any direction)
+				if (correctionCheck) {
+					if (std::abs(prevX - data.x) > MAX_POSITION_CORRECTION || std::abs(data.y - prevY) > MAX_POSITION_CORRECTION)
+					{
+						correctionCountInTick++;
+						totalCorrectionCount++;
+						isUpdated = 1;
+					}
+				}
 				break;
 			}
 			break;
@@ -124,7 +146,20 @@ int Game::tick()
 		default:
 			break;
 		}
+		if (correctionCheck) 
+		{
+			if (!isUpdated)
+				noUpdates++;
+			auto result = std::to_string(correctionCountInTick) + dummy + std::to_string(noUpdates) + dummy;
+			thirdExperiment << result;
+			correctionCountInTick = 0;
+		}
 	}
+	if (correctionCheck) 
+	{
+		thirdExperiment << " , " << totalCorrectionCount;
+	}
+
 	return 0;
 }
 //TODO: Implement if neccessary

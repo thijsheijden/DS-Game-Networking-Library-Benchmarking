@@ -25,8 +25,12 @@ int main(int argc, char *argv[])
         if (std::strcmp(argv[i], "-r") == 0) {
             config->reliableMessaging = 1;
         }
+        else if (std::strcmp(argv[i], "-c") == 0)
+        {
+            config->correction = 0;
+        }
     }
-    Game game(config->mapWidth, config->mapHeight, config->reliableMessaging);
+    Game game(config->mapWidth, config->mapHeight, config->reliableMessaging, config->correction);
     game.startGameLoop(); 
     return EXIT_SUCCESS;
 }

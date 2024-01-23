@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
         if (std::strcmp(argv[i], "-r") == 0) {
             config->reliableMessaging = 1;
         }
-        else if (std::strcmp(argv[i], "-c") == 0)
+        else if (std::strcmp(argv[i], "--correction") == 0)
         {
             config->correction = 0;
         }

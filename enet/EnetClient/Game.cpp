@@ -22,7 +22,7 @@ PositionUpdateMessage deserialize_struct(const auto buffer)
 	memcpy(&result, buffer, sizeof(PositionUpdateMessage));
 	return result;
 }
-Game::Game(int width, int height, bool reliableMessage)
+Game::Game(int width, int height, bool reliableMessage, bool correction)
 {
 	mapHeight = height;
 	mapWidth = width;
@@ -126,11 +126,13 @@ int Game::tick()
 				static auto prevY = data.y;
 				//printf("Recieved position for %d, x: %d,y: %d\n", data.ownerId, data.x, data.y);
 				//Number of corrections made based on server updates in the tick(position changes of more than 1 space in any direction)
-				if (std::abs(prevX - data.x) > MAX_POSITION_CORRECTION || std::abs(data.y - prevY) > MAX_POSITION_CORRECTION)
-				{
-					correctionCountInTick++;
-					totalCorrectionCount++;
-					isUpdated = 1;
+				if (correctionCheck) {
+					if (std::abs(prevX - data.x) > MAX_POSITION_CORRECTION || std::abs(data.y - prevY) > MAX_POSITION_CORRECTION)
+					{
+						correctionCountInTick++;
+						totalCorrectionCount++;
+						isUpdated = 1;
+					}
 				}
 				break;
 			}
@@ -144,13 +146,19 @@ int Game::tick()
 		default:
 			break;
 		}
-		if (!isUpdated)
-			noUpdates++;
-		auto result = std::to_string(correctionCountInTick) + dummy + std::to_string(noUpdates) + dummy;
-		thirdExperiment << result;
-		correctionCountInTick = 0;
+		if (correctionCheck) 
+		{
+			if (!isUpdated)
+				noUpdates++;
+			auto result = std::to_string(correctionCountInTick) + dummy + std::to_string(noUpdates) + dummy;
+			thirdExperiment << result;
+			correctionCountInTick = 0;
+		}
 	}
-	thirdExperiment << " , " << totalCorrectionCount;
+	if (correctionCheck) 
+	{
+		thirdExperiment << " , " << totalCorrectionCount;
+	}
 
 	return 0;
 }

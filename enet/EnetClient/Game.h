@@ -6,6 +6,8 @@
 #include "vector"
 #include "Client.h"
 #include <map>
+#include <fstream>
+
 #ifndef CLIENT_GAME_H
 #define CLIENT_GAME_H
 
@@ -47,6 +49,8 @@ private:
     Client* m_client = new Client();
     std::map<int, PositionUpdateMessage> m_others; 
     size_t channel = 0;
+    std::ofstream thirdExperiment;
+
 
 };
 

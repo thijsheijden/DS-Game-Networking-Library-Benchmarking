@@ -165,7 +165,7 @@ int Game::tick()
 				{
 					isUpdated = true;
 					
-					if (isTarget && (std::abs(prevX - data.x) > MAX_POSITION_CORRECTION || std::abs(data.y - prevY) >= MAX_POSITION_CORRECTION))
+					if (isTarget && (std::abs(prevX - data.x) >= MAX_POSITION_CORRECTION || std::abs(data.y - prevY) >= MAX_POSITION_CORRECTION))
 					{
 						correctionCountInTick++;
 						totalCorrectionCount++;

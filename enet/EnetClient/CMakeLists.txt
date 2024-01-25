@@ -4,7 +4,7 @@ if(UNIX)
     set(CMAKE_C_COMPILER gcc)
     set(CMAKE_CXX_COMPILER g++)
 endif()
-add_executable (EnetClient "Client.h" "Client.cpp" "main.cpp" "Game.h" "Game.cpp" )
+add_executable (EnetClient "Client.h" "Client.cpp" "main.cpp" "Game.h" "Game.cpp" "../../common/corrections_tracker.cpp" )
 target_include_directories(EnetClient PRIVATE 
                                             "../enet/include" 
                                                 "../common")

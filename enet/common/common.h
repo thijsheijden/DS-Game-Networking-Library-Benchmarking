@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <string>
 #include <sstream>
-//#include <cstdint>
-//#include "getopt.h"
+#include "filesystem"
+
 //Basic events of the game
 enum class Event
 {
@@ -28,7 +28,8 @@ struct Config {
     uint16_t mapHeight = 100;
     uint8_t playerCount = 2;
     bool reliableMessaging = false;
-    bool correction = true;
+    bool correction = false;
+    std::string correctionsLoggingDirectory = std::filesystem::current_path();
 };
 
 

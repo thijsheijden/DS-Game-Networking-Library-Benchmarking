@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Connect to server
-    auto connRes = client.rakPeer->Connect(SERVER_IP, (unsigned short) GAME_PORT, 0, 0, 0, 0, 12);
+    auto connRes = client.rakPeer->Connect(SERVER_IP, (unsigned short) GAME_PORT, 0, 0, 0, 0, 12, 500, 250);
     if (connRes != CONNECTION_ATTEMPT_STARTED) {
         cout << "connection failed to get started";
     }

@@ -89,6 +89,7 @@ public:
 
 struct GameConnectionConfig : ClientServerConfig {
     GameConnectionConfig()  {
+        timeout = 1,
         numChannels = 2;
         channel[0].type = CHANNEL_TYPE_RELIABLE_ORDERED;
         channel[1].type = CHANNEL_TYPE_UNRELIABLE_UNORDERED;

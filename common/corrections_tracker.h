@@ -4,6 +4,8 @@
 #include "iostream"
 #include "fstream"
 #include "cstdint"
+#include "unistd.h"
+#include "sys/types.h"
 
 using namespace std;
 class corrections_tracker {
@@ -35,7 +37,7 @@ public:
         // Generate filename
         auto currentTime = std::chrono::system_clock::now();
         auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime.time_since_epoch()).count();
-        string fileName = libraryName + "_" + to_string(timestamp) + ".csv";
+        string fileName = libraryName + "_" + to_string(timestamp) + "_" + to_string(getpid()) + ".csv";
 
         // Open file
         filesystem::path filePath = outputFileDirectory + "/" + fileName;

@@ -41,6 +41,7 @@ class Player: public NetworkIDObject
 public:
     Position pos;
     uint8_t health = 3;
+    bool broadcastLocationToSelf = false;
 
     Player() = default;
     Player(Position _pos) {

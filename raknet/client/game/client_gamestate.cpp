@@ -4,9 +4,9 @@ using namespace std;
 
 // CreateLocalPlayer creates the local player
 void ClientGamestate::CreateLocalPlayer(NetworkID playerID, Position spawnPos) {
-    localPlayer = Player(spawnPos);
-    localPlayer.SetNetworkIDManager(&networkIDManager);
-    localPlayer.SetNetworkID(playerID);
+    localPlayer = new Player(spawnPos);
+    localPlayer->SetNetworkIDManager(&networkIDManager);
+    localPlayer->SetNetworkID(playerID);
 }
 
 // AddRemotePlayer adds a new remote player to the game
@@ -21,11 +21,11 @@ void ClientGamestate::AddRemotePlayer(NetworkID remotePlayerID, Position pos) {
 Position ClientGamestate::PerformLocalMove() {
     vector<Position> possibleMoves;
 
-    auto localPlayerPos = localPlayer.pos;
-    if (localPlayer.pos.y > 0) possibleMoves.emplace_back(localPlayerPos.x, localPlayerPos.y - 1);
-    if (localPlayer.pos.y < mapHeight) possibleMoves.emplace_back(localPlayerPos.x, localPlayerPos.y + 1);
-    if (localPlayer.pos.x > 0) possibleMoves.emplace_back(localPlayerPos.x - 1, localPlayerPos.y);
-    if (localPlayer.pos.x < mapWidth) possibleMoves.emplace_back(localPlayerPos.x + 1, localPlayerPos.y);
+    auto localPlayerPos = localPlayer->pos;
+    if (localPlayerPos.y > 0) possibleMoves.emplace_back(localPlayerPos.x, localPlayerPos.y - 1);
+    if (localPlayerPos.y < mapHeight) possibleMoves.emplace_back(localPlayerPos.x, localPlayerPos.y + 1);
+    if (localPlayerPos.x > 0) possibleMoves.emplace_back(localPlayerPos.x - 1, localPlayerPos.y);
+    if (localPlayerPos.x < mapWidth) possibleMoves.emplace_back(localPlayerPos.x + 1, localPlayerPos.y);
 
     // If the player can't perform any moves, remain at its current position
     if (possibleMoves.empty()) return localPlayerPos;
@@ -47,7 +47,7 @@ Position ClientGamestate::PerformLocalMove() {
     }
 
     // Perform the move
-    localPlayer.pos = chosenMove;
+    localPlayer->pos = chosenMove;
 
     return chosenMove;
 }
@@ -58,6 +58,6 @@ void ClientGamestate::Display() {
         mvaddch(remotePlayerPos.second->y, remotePlayerPos.second->x, '*');
     }
 
-    mvaddch(localPlayer.pos.y, localPlayer.pos.x, '+');
+    mvaddch(localPlayer->pos.y, localPlayer->pos.x, '+');
     refresh();
 }

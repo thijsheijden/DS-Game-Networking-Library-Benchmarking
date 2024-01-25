@@ -84,7 +84,6 @@ void Client::StartGameloop(bool display) {
     while (true) {
         // Choose action to perform locally and perform the action
         auto newPlayerPos = gamestate.PerformLocalMove();
-        printf("new player position is (%u, %u)\n", newPlayerPos.x, newPlayerPos.y);
 
         // Push action to the server
         sendLocalPlayerMove(newPlayerPos);
@@ -108,6 +107,8 @@ void Client::StartGameloop(bool display) {
             receivedPacket = rakPeer->Receive();
         }
 
+        if (logCorrections) correctionsTracker->writeLine();
+
         // Set next time tick should occur and clear the action queue
         std::this_thread::sleep_until(next);
         next += Framerate{1};
@@ -126,7 +127,7 @@ void Client::handleCustomPacket(SLNet::Packet *p, u_char identifier) {
     switch (identifier) {
         case PLAYER_JOIN: {
             auto *newPlayerJoinMessage = reinterpret_cast<NewPlayerJoinMessage*>(p->data);
-            if (newPlayerJoinMessage->playerID != gamestate.localPlayer.GetNetworkID()) {
+            if (newPlayerJoinMessage->playerID != gamestate.localPlayer->GetNetworkID()) {
                 // This player is not us, create a new player and add to gamestate
                 gamestate.AddRemotePlayer(newPlayerJoinMessage->playerID, newPlayerJoinMessage->spawnPoint);
             }
@@ -136,6 +137,9 @@ void Client::handleCustomPacket(SLNet::Packet *p, u_char identifier) {
             // Current player position, update local gamestate with this position
             auto *playerPositionMessage = reinterpret_cast<PlayerPositionMessage*>(p->data);
             handlePlayerPositionUpdate(playerPositionMessage->playerID, playerPositionMessage->currentPos);
+
+            if (logCorrections) correctionsTracker->updatesReceivedInTick(); // Notify the corrections tracker that an update has been received in this tick
+
             break;
         }
     }
@@ -143,7 +147,7 @@ void Client::handleCustomPacket(SLNet::Packet *p, u_char identifier) {
 
 // sendLocalPlayerMove sends the new position of the local player
 void Client::sendLocalPlayerMove(Position newPos) {
-    auto *playerMoveMessage = new PlayerMoveMessage(gamestate.localPlayer.GetNetworkID(), newPos);
+    auto *playerMoveMessage = new PlayerMoveMessage(gamestate.localPlayer->GetNetworkID(), newPos);
     rakPeer->Send(reinterpret_cast<char*>(playerMoveMessage), sizeof(PlayerMoveMessage), HIGH_PRIORITY, reliabilityMode, 1, serverAddress, false);
 }
 
@@ -154,6 +158,14 @@ void Client::handlePlayerPositionUpdate(NetworkID playerID, Position newPos) {
         // This player is new, add them
         gamestate.AddRemotePlayer(playerID, newPos);
     } else {
+        if (logCorrections) {
+            // Check whether the difference in cardinal direction position is more than 1
+            if (abs(player->pos.x - newPos.x) > 1 || abs(player->pos.y - newPos.y) > 1) {
+                correctionsTracker->correctionMade();
+            }
+        }
+
+        // This player will only be us if we have made an illegal move or are out of sync with the server
         player->pos = newPos;
     }
 }

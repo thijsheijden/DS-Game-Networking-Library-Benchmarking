@@ -14,6 +14,8 @@ add_executable(client client/main.cpp
         common/gamestate.h
         client/game/client_gamestate.cpp
         client/game/client_gamestate.h
+        common/corrections_tracker.h
+        common/corrections_tracker.cpp
 )
 
 add_executable(server server/main.cpp

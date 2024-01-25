@@ -25,6 +25,10 @@ int main(int argc, char *argv[]) {
     if (config.reliableMessaging) {
         client.reliabilityMode = RELIABLE_ORDERED;
     }
+    if (config.countCorrections) {
+        client.logCorrections = true;
+        client.correctionsTracker = new corrections_tracker(config.correctionsLoggingDirectory, "raknet");
+    }
 
     // Create RakNet peer
     client.rakPeer = RakPeerInterface::GetInstance();

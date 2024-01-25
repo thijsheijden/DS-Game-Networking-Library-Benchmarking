@@ -4,6 +4,7 @@
 #include "slikenet/peerinterface.h"
 #include "../common/game_objects.h"
 #include "game/client_gamestate.h"
+#include "../common/corrections_tracker.h"
 
 using namespace SLNet;
 class Client
@@ -12,6 +13,8 @@ public:
     RakPeerInterface *rakPeer;
     ClientGamestate gamestate;
     PacketReliability reliabilityMode = UNRELIABLE;
+    bool logCorrections = false;
+    corrections_tracker* correctionsTracker;
 
     Client() = default;
     void WaitForConnectionAndApplyGameConfiguration();

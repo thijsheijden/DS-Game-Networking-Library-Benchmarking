@@ -1,4 +1,5 @@
 #include "server_gamestate.h"
+#include "iostream"
 
 // CreateAndSpawnNewPlayerForClient creates a new player Network object a newly connected client
 void ServerGamestate::CreateAndSpawnNewPlayerForClient(SystemAddress clientAddress) {
@@ -45,7 +46,10 @@ void ServerGamestate::UpdatePlayerPositions() {
         auto currentPlayer = networkIDManager.GET_OBJECT_FROM_ID<Player*>(updatedPlayerPos.first);
 
         // Player moved more than 1 space in one tick, decline position update
-        if (abs(updatedPlayerPos.second.y - currentPlayer->pos.y) > 1 || abs(updatedPlayerPos.second.x - currentPlayer->pos.x) > 1) continue;
+        if (abs(updatedPlayerPos.second.y - currentPlayer->pos.y) > 1 || abs(updatedPlayerPos.second.x - currentPlayer->pos.x) > 1) {
+            cout << "ignored position " + to_string(updatedPlayerPos.second.x) + " " + to_string(updatedPlayerPos.second.y) << endl;
+            continue;
+        }
 
         // Update player position
         currentPlayer->pos = updatedPlayerPos.second;

@@ -10,7 +10,7 @@ using namespace std;
 class ClientGamestate: public Gamestate {
 public:
     // The player this client controls
-    Player localPlayer;
+    Player* localPlayer;
     // The remote player positions, include the network ID to easily remove a player position when the player leaves the game
     vector<pair<NetworkID, Position*>> remotePlayerPositions;
 

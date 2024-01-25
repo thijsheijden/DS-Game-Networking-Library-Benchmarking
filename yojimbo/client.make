@@ -27,7 +27,7 @@ ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
 ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
 LIBS += bin/libyojimbo.a -lsodium -lmbedtls -lmbedx509 -lmbedcrypto
 LDDEPS += bin/libyojimbo.a
-LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
+LINKCMD = $(CXX) -o "$@" ../common/corrections_tracker.cpp $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) -std=c++20 $(LIBS)
 define PREBUILDCMDS
 endef
 define PRELINKCMDS
@@ -39,7 +39,7 @@ ifeq ($(config),debug_x64)
 OBJDIR = obj/x64/Debug/client
 DEFINES += -DYOJIMBO_DEBUG -DNETCODE_DEBUG -DRELIABLE_DEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -ffast-math -g -msse2 -Wall -Wextra
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -ffast-math -g -msse2 -Wall -Wextra -fno-rtti -std=c++20
+ALL_CXXFLAGS += -v $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -ffast-math -g -msse2 -Wall -Wextra -fno-rtti -std=c++20
 ALL_LDFLAGS += $(LDFLAGS) -m64
 
 else ifeq ($(config),release_x64)
@@ -73,7 +73,7 @@ all: $(TARGET)
 $(TARGET): $(GENERATED) $(OBJECTS) $(LDDEPS) | $(TARGETDIR)
 	$(PRELINKCMDS)
 	@echo Linking client
-	$(SILENT) $(LINKCMD)
+	$(LINKCMD)
 	$(POSTBUILDCMDS)
 
 $(TARGETDIR):
@@ -127,8 +127,7 @@ endif
 # #############################################
 
 $(OBJDIR)/client.o: client.cpp
-	@echo "$(notdir $<)"
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+	$(CXX) -v $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)"
 
 -include $(OBJECTS:%.o=%.d)
 ifneq (,$(PCH))

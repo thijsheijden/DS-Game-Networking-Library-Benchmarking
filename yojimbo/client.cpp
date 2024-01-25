@@ -32,8 +32,14 @@
 #include "shared.h"
 #include <vector>
 #include <unistd.h>
+#include "filesystem"
+#include "../common/corrections_tracker.h"
 
 using namespace yojimbo;
+using namespace std;
+
+bool trackCorrections = false;
+corrections_tracker* correctionsTracker;
 
 static volatile int quit = 0;
 
@@ -54,6 +60,8 @@ public:
 
 struct GameConfig {
     bool GUI = false;
+    bool countCorrections = false;
+    string correctionsLoggingDirectory = filesystem::current_path();
     uint16_t mapWidth = 100;
     uint16_t mapHeight = 100;
     uint8_t playerCount = 2; // unused in yojimbo
@@ -128,10 +136,22 @@ void ProcessNewPlayerJoinedMessage(NewPlayerJoinedMessage* message, ClientGameSt
 
 void ProcessPlayerPositionMessage(PlayerPositionMessage* message, ClientGameState& gameState) {
     clientID playerToUpdate = message->playerID;
+
+    // Check if a correction had to be made
+    if (trackCorrections) {
+        if (gameState.remotePlayerPositions.count(playerToUpdate) > 0) {
+            auto remotePlayerPosition = gameState.remotePlayerPositions[playerToUpdate];
+            if (abs(remotePlayerPosition.x - message->x) > 1 || abs(remotePlayerPosition.y - message->y) > 1) {
+                correctionsTracker->correctionMade();
+            }
+        }
+    }
+
     // if the current player doesn't know this new player exists
     // then new entry is created in the map
     gameState.remotePlayerPositions[playerToUpdate] = Position(message->x, message->y);
     printf("player %d updated\n", playerToUpdate);
+    correctionsTracker->updatesReceivedInTick();
 }
 
 void ProcessMessage(yojimbo::Message* message, ClientGameState& gameState) {
@@ -166,7 +186,7 @@ void sendLocalPlayerMove(clientID clientIndex, Position newPos, Client& client, 
 // parseCommandLineArguments parses the given command line arguments into a Config instance
 void parseCommandLineArguments(int argc, char *argv[], GameConfig* gameConfig) {
     for(;;) {
-        switch(getopt(argc, argv, "grw:h:")) // note the colon (:) to indicate that 'b' has a parameter and is not a switch
+        switch(getopt(argc, argv, "grw:h:xp:")) // note the colon (:) to indicate that 'b' has a parameter and is not a switch
         {
             case 'g':
                 gameConfig->GUI = true;
@@ -180,6 +200,12 @@ void parseCommandLineArguments(int argc, char *argv[], GameConfig* gameConfig) {
                 continue;
             case 'h':
                 gameConfig->mapHeight = atoi(optarg);
+                continue;
+            case 'x':
+                gameConfig->countCorrections = true;
+                continue;
+            case 'p':
+                gameConfig->correctionsLoggingDirectory = optarg;
                 continue;
             case -1:
                 break;
@@ -197,7 +223,6 @@ int ClientMain( int argc, char * argv[] )
     printf( "client id is %.16" PRIx64 "\n", clientId );
     GameConnectionConfig config;
 
-
     struct ClientGameState gameState;
     GameConfig gameConfig;
     parseCommandLineArguments(argc, argv, &gameConfig);
@@ -208,7 +233,6 @@ int ClientMain( int argc, char * argv[] )
     } else {
         printf("running client with unreliable unordered messaging\n");
     }
-
 
     // Allocate random buffer for the Client
     Client client( GetDefaultAllocator(), Address("0.0.0.0"), config, adapter, time );
@@ -231,9 +255,13 @@ int ClientMain( int argc, char * argv[] )
     bool configReceived = false;
     bool playerSpawnAndIdReceived = false;
 
-    while ( !quit )
-    {        
+    if (gameConfig.countCorrections) {
+        trackCorrections = true;
+        correctionsTracker = new corrections_tracker(gameConfig.correctionsLoggingDirectory, "yojimbo");
+    }
 
+    while (!quit)
+    {
         client.ReceivePackets();
 
         for (int i = 0; i < 2; i++) {
@@ -275,10 +303,11 @@ int ClientMain( int argc, char * argv[] )
             sendLocalPlayerMove(clientId, newPlayerPos, client, channel_type);
         }
 
+        correctionsTracker->writeLine();
 
         if ( client.IsDisconnected() )
             break;
-     
+
         time += deltaTime;
 
         client.AdvanceTime( time );

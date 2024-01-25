@@ -43,7 +43,7 @@ void parseCommandLineArguments(int argc, char *argv[], Config* config) {
             case 'x':
                 config->countCorrections = true;
                 continue;
-            case 'f':
+            case 'p':
                 config->correctionsLoggingDirectory = optarg;
                 continue;
             case -1:

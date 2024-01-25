@@ -4,7 +4,7 @@
 #include "slikenet/peerinterface.h"
 #include "../common/game_objects.h"
 #include "game/client_gamestate.h"
-#include "../common/corrections_tracker.h"
+#include "../../common/corrections_tracker.h"
 
 using namespace SLNet;
 class Client

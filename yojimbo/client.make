@@ -127,7 +127,7 @@ endif
 # #############################################
 
 $(OBJDIR)/client.o: client.cpp
-	$(CXX) -v $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)"
+	$(CXX) -v $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
 -include $(OBJECTS:%.o=%.d)
 ifneq (,$(PCH))
